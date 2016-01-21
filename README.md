@@ -1,2 +1,2 @@
 # mIRCAutoDL
-AutoDL program for mIRC
+Auto-download program for mIRC
