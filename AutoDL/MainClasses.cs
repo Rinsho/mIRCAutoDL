@@ -153,7 +153,14 @@ namespace AutoDL
             Configuration config = OpenConfigFile();
             BotNickSection nickSection = config.GetSection(BotNickSection.SECTION_NAME) as BotNickSection;
             BotNickElement nickElement = nickSection.Nicknames[nick];
-            return nickElement.Name;
+            if (nickElement == null)
+            {
+                return "null";
+            }
+            else
+            {
+                return nickElement.Name;
+            }
         }
 
         public bool RemoveNick(string nick)

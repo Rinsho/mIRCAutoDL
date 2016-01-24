@@ -1,3 +1,5 @@
+// AutoDLWrapper.h
+
 #pragma once
 #pragma comment(linker, "/EXPORT:LoadDll=_LoadDll@4")
 #pragma comment(linker, "/EXPORT:UnloadDll=_UnloadDll@4")
