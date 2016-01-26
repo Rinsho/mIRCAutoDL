@@ -2,9 +2,6 @@
 
 //*********************************
 #include "stdafx.h"
-#include <windows.h>
-#include <stdio.h>
-#include <vcclr.h>
 #include "AutoDLWrapper.h"
 
 #define ITEM_SEPARATOR ","
@@ -14,13 +11,14 @@ using namespace System;
 using namespace System::Collections::Generic;
 using namespace AutoDL;
 
-//Wrapper class for two main C# classes
-ref class Wrapper
+//Wrapper class for C# classes
+static ref class Wrapper
 {
 public:
-	//static SettingsData^ const sdata = gcnew SettingsData();
 	static DownloadQueue^ const queue = gcnew DownloadQueue();
-	static SettingsData^ const sdata = gcnew SettingsData();
+	static SettingsConfig^ const settings_config = gcnew SettingsConfig();
+	static NicknameConfig^ const nick_config = gcnew NicknameConfig();
+	static QueueConfig^ const queue_config = gcnew QueueConfig();
 };
 
 //Parses data string from mIRC into List
@@ -29,7 +27,7 @@ List<String^>^ ParseStringToList(String^% input)
 	return gcnew List<String^>(input->Split(','));
 }
 
-//Parses packet clusters in the form of #-# into individual packets
+//Parses packet ranges in the form of #-# into individual packets
 List<int>^ ParsePacketNumbers(List<String^>^% packets)
 {
 	List<int>^ NewPacketList = gcnew List<int>();
@@ -85,11 +83,16 @@ int __stdcall UnloadDll(int timeout)
 	//if Dll is simply idle for 10 minutes
 	if (timeout == 1)
 	{
-		return 0; //prevent unloading
+		//prevent unloading
+		return 0;
 	}
-	return 1; //else on mIRC exit or /dll -u, unload
+	//else on mIRC exit or /dll -u, unload
+	return 1;
 }
 
+#pragma region Queue Functions
+
+//Adds bot and packet(s) to queue, returns "null" on failure
 mIRCFunc(Queue_Add)
 {
 	String^ input = (gcnew String(data))->Trim();
@@ -97,8 +100,10 @@ mIRCFunc(Queue_Add)
 	if (Text::RegularExpressions::Regex::IsMatch(input, dataFormat, Text::RegularExpressions::RegexOptions::ExplicitCapture))
 	{
 		List<String^>^ list = ParseStringToList(input);
-		String^ bot = list[0];												//Get Botname
-		list->RemoveAt(0);													//Only packets left
+		//Get Botname
+		String^ bot = list[0];		
+		//Only packets left
+		list->RemoveAt(0);													
 		List<int>^ parsedList = ParsePacketNumbers(list);
 	    Wrapper::queue->Add(bot, parsedList);
 
@@ -116,6 +121,7 @@ mIRCFunc(Queue_Add)
 	return 3;
 }
 
+//Removes packet or bot from queue, returns "null" on failure
 mIRCFunc(Queue_Remove)
 {
 	bool success = false;
@@ -127,10 +133,12 @@ mIRCFunc(Queue_Remove)
 		if (_data->Count == 2)
 		{
 			int packet = Int32::Parse(_data[1]);
+			//Remove packet from bot
 			success = Wrapper::queue->Remove(_data[0], packet);
 		}
 		else
 		{
+			//Remove bot
 			success = Wrapper::queue->Remove(_data[0]);
 		}
 	}
@@ -142,12 +150,14 @@ mIRCFunc(Queue_Remove)
 	return 3;
 }
 
+//Clears active queue
 mIRCFunc(Queue_Clear)
 {
 	Wrapper::queue->RemoveAll();
 	return 1;
 }
 
+//Returns "bot,packet", bot is "null" if no item to return
 mIRCFunc(Queue_NextItem)
 {
 	Download download = Wrapper::queue->NextItem();
@@ -156,15 +166,17 @@ mIRCFunc(Queue_NextItem)
 	return 3;
 }
 
+//Saves Queue
 mIRCFunc(Queue_Save)
 {
-	Wrapper::sdata->SaveQueue(Wrapper::queue);
+	Wrapper::queue_config->SaveQueue(Wrapper::queue);
 	return 1;
 }
 
+//Loads Queue, returns "null" if no queue to load
 mIRCFunc(Queue_Load)
 {
-	List<String^>^ loaded = Wrapper::sdata->LoadQueue(Wrapper::queue);
+	List<String^>^ loaded = Wrapper::queue_config->LoadQueue(Wrapper::queue);
 	String^ _data = "null";
 	
 	//construct String^ from List<String^>
@@ -188,12 +200,18 @@ mIRCFunc(Queue_Load)
 	return 3;
 }
 
+//Clears queue saved in config file
 mIRCFunc(Queue_ClearSaved)
 {
-	Wrapper::sdata->ClearSavedQueue();
+	Wrapper::queue_config->ClearSavedQueue();
 	return 1;
 }
 
+#pragma endregion
+
+#pragma region Settings Functions
+
+//Saves settings
 mIRCFunc(Settings_Save)
 {
 	String^ input = (gcnew String(data))->Trim();
@@ -206,15 +224,16 @@ mIRCFunc(Settings_Save)
 		newSettings.Notifications = Boolean::Parse(_data[0]);
 		newSettings.RetryFailedDownload = Boolean::Parse(_data[1]);
 		newSettings.DownloadDelay = Int32::Parse(_data[2]);
-		Wrapper::sdata->SaveSettings(newSettings);
+		Wrapper::settings_config->SaveSettings(newSettings);
 	}
 	return 1;
 }
 
+//Loads settings
 mIRCFunc(Settings_Load)
 {
 	Settings loaded;
-	loaded = Wrapper::sdata->LoadSettings();
+	loaded = Wrapper::settings_config->LoadSettings();
 	String^ _data = loaded.Notifications.ToString() + ITEM_SEPARATOR +
 		loaded.RetryFailedDownload.ToString() + ITEM_SEPARATOR +
 		loaded.DownloadDelay.ToString();
@@ -222,6 +241,11 @@ mIRCFunc(Settings_Load)
 	return 3;
 }
 
+#pragma endregion
+
+#pragma region Nickname Functions
+
+//Add nickname to config file, return "null" on failure
 mIRCFunc(Nick_Add)
 {
 	bool success = false;
@@ -230,7 +254,7 @@ mIRCFunc(Nick_Add)
 	if (Text::RegularExpressions::Regex::IsMatch(input, dataFormat))
 	{
 		List<String^>^ _data = ParseStringToList(input);
-		Wrapper::sdata->AddNick(_data[0], _data[1]);
+		Wrapper::nick_config->AddNick(_data[0], _data[1]);
 		success = true;
 	}
 	if (!success)
@@ -241,6 +265,7 @@ mIRCFunc(Nick_Add)
 	return 3;
 }
 
+//Remove nickname from config file, return "null" on failure
 mIRCFunc(Nick_Remove)
 {
 	bool success = false;
@@ -248,7 +273,7 @@ mIRCFunc(Nick_Remove)
 	String^ dataFormat = "^[^\\s,]+$";
 	if (Text::RegularExpressions::Regex::IsMatch(input, dataFormat))
 	{
-		success = Wrapper::sdata->RemoveNick(input);
+		success = Wrapper::nick_config->RemoveNick(input);
 	}
 	if (!success)
 	{
@@ -258,19 +283,21 @@ mIRCFunc(Nick_Remove)
 	return 3;
 }
 
+//Clear nicknames in config file
 mIRCFunc(Nick_Clear)
 {
-	Wrapper::sdata->ClearNicks();
+	Wrapper::nick_config->ClearNicks();
 	return 1;
 }
 
+//Given a nickname, return original bot name, return "null" on failure
 mIRCFunc(Nick_GetName)
 {
 	String^ input = (gcnew String(data))->Trim();
 	String^ dataFormat = "^[^\\s,]+$";
 	if (Text::RegularExpressions::Regex::IsMatch(input, dataFormat))
 	{
-		input = Wrapper::sdata->GetName(input);
+		input = Wrapper::nick_config->GetName(input);
 	}
 	else
 	{
@@ -280,9 +307,10 @@ mIRCFunc(Nick_GetName)
 	return 3;
 }
 
+//Returns all bot/nickname pairs, returns "null" if no pairs
 mIRCFunc(Nick_GetAll)
 {
-	List<String^>^ keyValues = Wrapper::sdata->GetAllNamesAndNicks();
+	List<String^>^ keyValues = Wrapper::nick_config->GetAllNamesAndNicks();
 	String^ _data = "null";
 	if (keyValues->Count > 1)
 	{
@@ -295,3 +323,5 @@ mIRCFunc(Nick_GetAll)
 	CopyStringToCharArray(_data, data);
 	return 3;
 }
+
+#pragma endregion
