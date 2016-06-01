@@ -22,17 +22,43 @@ namespace AutoDL
     {      
         public void Add(DLQueueItemElement item)
         {
-            BaseAdd(item);
+            try
+            {
+                BaseAdd(item, true);
+            }
+            catch (Exception)
+            {
+                BaseRemove(item.BotName);
+                BaseAdd(item);
+            }
         }
 
-        public void Remove(DLQueueItemElement item)
+        public bool Remove(DLQueueItemElement item)
         {
-            BaseRemove(item.BotName);
+            bool success = true;
+            try
+            {
+                BaseRemove(item.BotName);
+            }
+            catch (Exception)
+            {
+                success = false;
+            }
+            return success;
         }
 
-        public void Remove(string name)
+        public bool Remove(string name)
         {
-            BaseRemove(name);
+            bool success = true;
+            try
+            {
+                BaseRemove(name);
+            }
+            catch (Exception)
+            {
+                success = false;
+            }
+            return success;
         }
 
         public void Clear()
@@ -102,14 +128,32 @@ namespace AutoDL
             BaseAdd(item);
         }
 
-        public void Remove(PacketElement item)
+        public bool Remove(PacketElement item)
         {
-            BaseRemove(item.Packet);
+            bool success = true;
+            try
+            {
+                BaseRemove(item.Packet);
+            }
+            catch (Exception)
+            {
+                success = false;
+            }
+            return success;
         }
 
-        public void Remove(int packetNumber)
+        public bool Remove(int packetNumber)
         {
-            BaseRemove(packetNumber);
+            bool success = true;
+            try
+            {
+                BaseRemove(packetNumber);
+            }
+            catch (Exception)
+            {
+                success = false;
+            }
+            return success;
         }
 
         protected override ConfigurationElement CreateNewElement()

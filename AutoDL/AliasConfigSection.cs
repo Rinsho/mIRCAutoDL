@@ -3,32 +3,32 @@ using System.Configuration;
 
 namespace AutoDL
 {
-    public class BotNickSection : ConfigurationSection
+    public class AliasSection : ConfigurationSection
     {
-        public static string SECTION_NAME = "BotNicknames";
+        public static string SECTION_NAME = "Aliases";
 
         [ConfigurationProperty("", IsDefaultCollection=true, IsRequired=false)]
-        public BotNickCollection Nicknames
+        public AliasCollection Aliases
         {
             get
             {
-                return this[""] as BotNickCollection;
+                return this[""] as AliasCollection;
             }
         }
     }
 
-    [ConfigurationCollection(typeof(BotNickElement))]
-    public class BotNickCollection : ConfigurationElementCollection
+    [ConfigurationCollection(typeof(AliasElement))]
+    public class AliasCollection : ConfigurationElementCollection
     {
-        public new BotNickElement this[string nick]
+        public new AliasElement this[string alias]
         {
             get
             {
-                return BaseGet(nick) as BotNickElement;
+                return BaseGet(alias) as AliasElement;
             }
         }
 
-        public void Add(BotNickElement item)
+        public void Add(AliasElement item)
         {
             try
             {
@@ -36,17 +36,17 @@ namespace AutoDL
             }
             catch (Exception)
             {
-                BaseRemove(item.Nickname);
+                BaseRemove(item.Alias);
                 BaseAdd(item);
             }
         }
 
-        public bool Remove(BotNickElement item)
+        public bool Remove(AliasElement item)
         {
             bool success = true;
             try
             {
-                BaseRemove(item.Nickname);
+                BaseRemove(item.Alias);
             }
             catch (Exception)
             {
@@ -55,12 +55,12 @@ namespace AutoDL
             return success;
         }
 
-        public bool Remove(string nick)
+        public bool Remove(string alias)
         {
             bool success = true;
             try
             {
-                BaseRemove(nick);
+                BaseRemove(alias);
             }
             catch (Exception)
             {
@@ -76,17 +76,17 @@ namespace AutoDL
 
         protected override ConfigurationElement CreateNewElement()
         {
-            return new BotNickElement();
+            return new AliasElement();
         }
 
         protected override object GetElementKey(ConfigurationElement element)
         {
-            return (element as BotNickElement).Nickname;
+            return (element as AliasElement).Alias;
         }
 
     }
 
-    public class BotNickElement : ConfigurationElement
+    public class AliasElement : ConfigurationElement
     {
         [ConfigurationProperty("name", IsRequired=true)]
         public string Name
@@ -102,17 +102,17 @@ namespace AutoDL
             }
         }
 
-        [ConfigurationProperty("nickname", IsRequired=true, IsKey=true)]
-        public string Nickname
+        [ConfigurationProperty("alias", IsRequired=true, IsKey=true)]
+        public string Alias
         {
             get
             {
-                return this["nickname"] as string;
+                return this["alias"] as string;
             }
 
             set
             {
-                this["nickname"] = value;
+                this["alias"] = value;
             }
         }
     }
