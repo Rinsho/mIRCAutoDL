@@ -244,6 +244,7 @@ namespace AutoDL
         {
             Data.Clear();
         }
+        //CHANGE TO REMOVE/SEARCH IF INVALID BOT IS ENCOUNTERED
         public Download NextDownload()
         {
             Download nextDownload = new Download();
@@ -287,6 +288,9 @@ namespace AutoDL
         }
     }
 
+    /* Class: Download
+     * Description: Represents a single download.
+     */
     [DataContract]
     public class Download
     {
@@ -303,6 +307,9 @@ namespace AutoDL
         public InvalidDownloadException(string message) : base(message) { }
     }
 
+    /* Exception: InvalidPacketException
+     * Description: Thrown if adding a bot with no valid packets.
+     */
     [Serializable]
     internal class InvalidPacketException : Exception
     {
