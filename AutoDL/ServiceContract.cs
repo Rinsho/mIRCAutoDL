@@ -3,31 +3,20 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ServiceModel;
 
-namespace AutoDL
+namespace AutoDL.ServiceContracts
 {
-    /* Interface: IUpdate
-     * Desription: Defines the contract for sending messages with wrapper.
-     */
-    public interface IUpdate
-    {
-        //DownloadUpdate: Receives success message from wrapper
-        //                and handles sending new download and 
-        //                updating the UI.
-        void DownloadUpdate(bool success);
-    }
-
     /* Interface: IDownload
      * Description: Defines the contract for downloading.  Functions as both
      *              the wrapper and ServiceHost contract.
      */
-    [ServiceContract]
+    [ServiceContract(SessionMode = SessionMode.Required, CallbackContract=typeof(IDownloadCallback))]
     public interface IDownload
     {
         //Add: Adds a bot with packet(s) to the queue
         [OperationContract]
-        bool Add(string name, List<int> packets);
+        void Add(string name, List<int> packets);
 
-        //Remove: Removes bot(s) and packet(s) from the queue
+        //Remove: Removes bot and packet(s) from the queue
         [OperationContract]
         void Remove(Dictionary<string, List<int>> data);
 
@@ -51,6 +40,15 @@ namespace AutoDL
         [OperationContract]
         void ClearSaved();
     }
+
+    public interface IDownloadCallback
+    {
+        //Used to update UI on download status
+        [OperationContract]
+        void DownloadStatusUpdate(DownloadStatus status);
+    }
+
+    public enum DownloadStatus : int {SUCCESS, FAIL, RETRY};
 
     /* Interface: ISettings
      * Description: Defines the contract for handling settings.  Functions as

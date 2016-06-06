@@ -1,15 +1,28 @@
-﻿using System;
+﻿/*
+ * TO-DO: Fix up this jumbled mess. /facepalm
+ * 
+ * Think about using async and await Task.Delay instead of Timer?
+ * 
+ * Consider implementing a ServiceManager class that holds each
+ * Service class.  This would decouple using the settings/alias
+ * services from the download service.  Seems sloppy right now.
+ */
+
+
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Threading;
+using System.ServiceModel;
 
-namespace AutoDL
+namespace AutoDL.Services
 {
-    /* Class: SettingsManager
+    /* Class: SettingsService
      * Description: Handles settings related to the 
      *              DownloadManager class.
      */
-    internal class SettingsManager : ISettings
+    [ServiceBehavior(ConcurrencyMode=ConcurrencyMode.Single, InstanceContextMode=InstanceContextMode.Single)]
+    internal class SettingsService : ServiceContracts.ISettings
     {
         public SettingsManager(string filePath)
         {
@@ -53,10 +66,11 @@ namespace AutoDL
         private string FilePath;
     }
 
-    /* Class: AliasManager
+    /* Class: AliasService
      * Description: Handles the alias feature.
      */
-    internal class AliasManager : IAlias
+    [ServiceBehavior(ConcurrencyMode=ConcurrencyMode.Single, InstanceContextMode=InstanceContextMode.Single)]
+    internal class AliasService : ServiceContracts.IAlias
     {
         public AliasManager(string filePath)
         {
@@ -106,19 +120,20 @@ namespace AutoDL
         private string FilePath;
     }
 
-    /* Class: DownloadManager
+    /* Class: DownloadService
      * Description: Handles all functionality related to the
      *              download feature.
      */
-    internal class DownloadManager : IDownload, IUpdate
+    [ServiceBehavior(ConcurrencyMode=ConcurrencyMode.Single, InstanceContextMode=InstanceContextMode.Single)]
+    internal class DownloadService : ServiceContracts.IDownload
     {
-        public DownloadManager(string filePath, AutoDLCaller callback)
+        public DownloadService(string filePath, AutoDLCaller callback)
         {
             FilePath = filePath;
             DLCallback = callback;
             Queue = new DownloadData();
-            AliasMgr = new AliasManager(FilePath);
-            SettingsMgr = new SettingsManager(FilePath);
+            AliasMgr = new AliasService(FilePath);
+            SettingsMgr = new SettingsService(FilePath);
         }
 
         //Methods: All comments for interface implementations are in the

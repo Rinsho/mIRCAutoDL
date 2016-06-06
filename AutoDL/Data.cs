@@ -1,4 +1,13 @@
-﻿using System;
+﻿/*
+ * TO-DO: Fix this jumbled mess.  KeyValueData<K,V> isn't really necessary
+ * anymore.  Maybe just make it a non-generic class so I don't have to copy-paste
+ * all the IEnumerable stuff.
+ * 
+ * Also tidy up the classes now that ServiceContracts are finalized.  And re-write some
+ * of the bool-returns since I'll be using exceptions now instead.
+ */
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -291,13 +300,9 @@ namespace AutoDL
     /* Class: Download
      * Description: Represents a single download.
      */
-    [DataContract]
     public class Download
     {
-        [DataMember]
         public string Name { get; set; }
-
-        [DataMember]
         public int Packet { get; set; }
     }
 

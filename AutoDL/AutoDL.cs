@@ -1,4 +1,9 @@
-﻿using System;
+﻿/*
+ * TO-DO:  Fix up initialization after I finish the Service classes.
+ * 
+ */
+
+using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 
@@ -7,46 +12,82 @@ namespace AutoDL
     /* Class: AutoDLMain
      * Description: Entry-point for the DLL.  Initializes and maintains the main class DownloadManager.
      */
-    public class AutoDLMain
+    public class AutoDLMain : IDisposable
     {
         public AutoDLMain(AutoDLCaller callbackFunc, string serviceExtension, string fileSettingsName = @"\AutoDL.dll.config")
         {
             FileSettingsPath += fileSettingsName;
-            queue = new DownloadManager(FileSettingsPath, callbackFunc);
+            queue = new Services.DownloadService(FileSettingsPath, callbackFunc);
+
+            //Service Setup
+            host = new ServiceHost(queue,
+                new Uri("net.pipe://localhost/AutoDL/" + serviceExtension));
+            host.AddServiceEndpoint(typeof(ServiceContracts.IDownload),
+                new NetNamedPipeBinding(),
+                "Download");
+            host.AddServiceEndpoint(typeof(ServiceContracts.ISettings),
+                new NetNamedPipeBinding(),
+                "Settings"); 
+            host.AddServiceEndpoint(typeof(ServiceContracts.IAlias),
+                 new NetNamedPipeBinding(),
+                 "Alias");
+            host.Open();
         }
         
         //Members       
         private string FileSettingsPath = AppDomain.CurrentDomain.BaseDirectory;
+        ServiceHost host;
 
         //Properties
-        private DownloadManager queue;
-        public IDownload Queue
+        private Services.DownloadService queue;
+        public ServiceContracts.IDownload Queue
         {
             get
             {
-                return queue as IDownload;
+                return queue as ServiceContracts.IDownload;
             }
         }
-        public ISettings Settings
+        public ServiceContracts.ISettings Settings
         {
             get
             {
-                return queue.SettingsMgr as ISettings;
+                return queue.SettingsMgr as ServiceContracts.ISettings;
             }
         }
-        public IAlias Aliases
+        public ServiceContracts.IAlias Aliases
         {
             get
             {
-                return queue.AliasMgr as IAlias;
+                return queue.AliasMgr as ServiceContracts.IAlias;
             }
         }
-        public IUpdate Status
+        public WrapperContracts.IUpdate Status
         {
             get
             {
-                return queue as IUpdate;
+                return queue as WrapperContracts.IUpdate;
             }
+        }
+
+        //Dispose implementation
+        private bool disposed = false;
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposed) { return; }
+            if (disposing)
+            {
+                if (host.State != CommunicationState.Closing || host.State != CommunicationState.Closed)
+                {
+                    host.Close();
+                }
+            }
+            disposed = true;
         }
     }
 
@@ -55,30 +96,3 @@ namespace AutoDL
      */
     public delegate void AutoDLCaller(Download nextDownload);
 }
-
-/*Service Setup
-             * 
-            //GOING TO NEED TO IMPLMEENT THREADING AND RUN SERVICE
-            //ON ITS OWN THREAD.
-             * 
-            //ALSO NEED TO USE INSTANCECONTEXTMODE.SINGLE FOR SERVICEBEHAVIORATTRIBUTE
-            //ON CLASSES IN ORDER TO PASS OBJECT INTO SERVICEHOST WHICH MEANS I NEED
-            //TO IMPLEMENT THEM AS SINGLETONS WITH LOCKS.
-            //THIS ALLOWS ME TO USE THE SAME INSTANCES FOR BOTH PROGRAMMATIC (VIA WRAPPER)
-            //AND SERVICE ACCESS WHICH IS THE INTENDED FUNCTIONALITY.
-             * 
-             * 
-            using (ServiceHost host = new ServiceHost(queue,
-                new Uri("net.pipe://localhost/AutoDL/" + serviceExtension)))
-                {
-                    host.AddServiceEndpoint(typeof(IDownload),
-                        new NetNamedPipeBinding(),
-                        "Connect");
-
-                    host.Open();
-
-                    //STUFF
-             
-                    host.Close();
-                }   
-*/
