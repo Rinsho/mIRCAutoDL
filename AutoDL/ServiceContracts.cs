@@ -41,6 +41,10 @@ namespace AutoDL.ServiceContracts
         void ClearSaved();
     }
 
+    /* Interface: IDownloadCallback
+     * Description: Used to update UI on status of current
+     *              download.
+     */
     public interface IDownloadCallback
     {
         //Used to update UI on download status
@@ -48,13 +52,13 @@ namespace AutoDL.ServiceContracts
         void DownloadStatusUpdate(DownloadStatus status);
     }
 
-    public enum DownloadStatus : int {SUCCESS, FAIL, RETRY};
+    public enum DownloadStatus : int { Fail, Success, Retry };
 
     /* Interface: ISettings
      * Description: Defines the contract for handling settings.  Functions as
      *              both the wrapper and ServiceHost contract.
      */
-    [ServiceContract]
+    [ServiceContract(SessionMode = SessionMode.Allowed)]
     public interface ISettings
     {
         //Update: Updates setting(s)
@@ -82,7 +86,7 @@ namespace AutoDL.ServiceContracts
      * Description: Defines the contract for handling aliases.  Functions as
      *              both the wrapper and ServiceHost contract.
      */
-    [ServiceContract]
+    [ServiceContract(SessionMode = SessionMode.Allowed)]
     public interface IAlias
     {
         //Add: Adds alias(es) 

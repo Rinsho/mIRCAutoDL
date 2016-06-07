@@ -17,189 +17,12 @@ using System.ServiceModel;
 
 namespace AutoDL.Services
 {
-    /* Class: SettingsService
-     * Description: Handles settings related to the 
-     *              DownloadManager class.
-     */
-    [ServiceBehavior(ConcurrencyMode=ConcurrencyMode.Single, InstanceContextMode=InstanceContextMode.Single)]
-    internal class SettingsService : ServiceContracts.ISettings
-    {
-        public SettingsManager(string filePath)
+    internal class DownloadManager
+    {     
+        public void DownloadStatusUpdate(ServiceContracts.DownloadStatus status)
         {
-            FilePath = filePath;
-            Settings = new SettingsData();
-        }
-
-        //Methods: All comments for interface implementations are in the
-        //         ServiceContract file.      
-        public void Update(Dictionary<string, string> settings)
-        {
-            Settings.Update(settings);
-        }      
-        public void Default(string setting)
-        {
-            Settings.Default(setting);
-        }      
-        public void DefaultAll()
-        {
-            Settings.DefaultAll();
-        }      
-        public void Save()
-        {
-            SettingsConfig SettingsFile = new SettingsConfig(FilePath);
-            SettingsFile.Save(Settings);
-        }
-        public Dictionary<string, string> Load()
-        {
-            SettingsConfig SettingsFile = new SettingsConfig(FilePath);
-            return SettingsFile.Load(Settings);
-        }
-
-        //GetSettingValue: Gets the value associated with a setting
-        internal string GetSettingValue(string setting)
-        {
-            return Settings[setting];
-        }
-
-        //Members
-        private SettingsData Settings;
-        private string FilePath;
-    }
-
-    /* Class: AliasService
-     * Description: Handles the alias feature.
-     */
-    [ServiceBehavior(ConcurrencyMode=ConcurrencyMode.Single, InstanceContextMode=InstanceContextMode.Single)]
-    internal class AliasService : ServiceContracts.IAlias
-    {
-        public AliasManager(string filePath)
-        {
-            FilePath = filePath;
-            Aliases = new AliasData();
-        }
-
-        //Methods: All comments for interface implementations are in the
-        //         ServiceContract file.       
-        public void Add(Dictionary<string, string> aliases)
-        {
-            Aliases.Add(aliases);
-        }       
-        public void Remove(string alias)
-        {
-            Aliases.Remove(alias);
-
-        }     
-        public void Clear()
-        {
-            Aliases.Clear();
-        }       
-        public void Save()
-        {
-            AliasConfig AliasFile = new AliasConfig(FilePath);
-            AliasFile.Save(Aliases);
-        }       
-        public Dictionary<string, string> Load()
-        {
-            AliasConfig AliasFile = new AliasConfig(FilePath);
-            return AliasFile.Load(Aliases);
-        }       
-        public void ClearSaved()
-        {
-            AliasConfig AliasFile = new AliasConfig(FilePath);
-            AliasFile.ClearSaved();
-        }
-
-        //GetName: Returns name associated with an alias
-        internal string GetName(string alias)
-        {
-            return Aliases[alias];
-        }
-
-        //Members
-        private AliasData Aliases;
-        private string FilePath;
-    }
-
-    /* Class: DownloadService
-     * Description: Handles all functionality related to the
-     *              download feature.
-     */
-    [ServiceBehavior(ConcurrencyMode=ConcurrencyMode.Single, InstanceContextMode=InstanceContextMode.Single)]
-    internal class DownloadService : ServiceContracts.IDownload
-    {
-        public DownloadService(string filePath, AutoDLCaller callback)
-        {
-            FilePath = filePath;
-            DLCallback = callback;
-            Queue = new DownloadData();
-            AliasMgr = new AliasService(FilePath);
-            SettingsMgr = new SettingsService(FilePath);
-        }
-
-        //Methods: All comments for interface implementations are in the
-        //         ServiceContract file.
-        public bool Add(string name, List<int> packets)
-        {
-            try
-            {
-                string fullName = AliasMgr.GetName(name);
-                if (String.IsNullOrEmpty(fullName))
-                {
-                    fullName = name;
-                }
-                Queue.Add(fullName, packets);
-                return true;
-            }
-            catch (InvalidPacketException)
-            {
-                return false;
-            }
-        }       
-        public void Remove(Dictionary<string, List<int>> data)
-        {
-            foreach (string name in data.Keys)
-            {
-                string fullName = AliasMgr.GetName(name);
-                if (!String.IsNullOrEmpty(fullName))
-                {
-                    data.Add(fullName, data[name]);
-                    data.Remove(name);
-                }
-            }
-
-            Queue.Remove(data);
-        }       
-        public void Remove(string name)
-        {
-            string fullName = AliasMgr.GetName(name);
-            if (String.IsNullOrEmpty(fullName))
-            {
-                fullName = name;
-            }
-            Queue.Remove(fullName);
-        }       
-        public void Clear()
-        {
-            Queue.Clear();
-        }        
-        public void Save()
-        {
-            QueueConfig QueueFile = new QueueConfig(FilePath);
-            QueueFile.Save(Queue);
-        }        
-        public OrderedDictionary Load()
-        {
-            QueueConfig QueueFile = new QueueConfig(FilePath);
-            return QueueFile.Load(Queue);
-        }       
-        public void ClearSaved()
-        {
-            QueueConfig QueueFile = new QueueConfig(FilePath);
-            QueueFile.ClearSaved();
-        }       
-        public void DownloadUpdate(bool success)
-        {
-            if (!success && Convert.ToBoolean(SettingsMgr.GetSettingValue("RetryFailedDownload")))
+            //SPLIT BETWEEN AUTODL UPDATE AND THIS
+            if (!(status == DownloadStatus.Success) && Convert.ToBoolean(SettingsMgr.GetSettingValue("RetryFailedDownload")))
             {
                 //SEND DOWNLOAD AGAIN
                 //UPDATE UI
@@ -233,13 +56,192 @@ namespace AutoDL.Services
             //UPDATE UI
         }
 
-        //Members
-        private DownloadData Queue;
-        private string FilePath;
-        private AutoDLCaller DLCallback;
+    }
 
-        //Download-related Managers
-        internal AliasManager AliasMgr;
-        internal SettingsManager SettingsMgr;
+    /* MEDIATOR
+    internal interface IServiceMediator
+    {
+        public string RequestSetting(string setting);
+        public string RequestName(string alias);
+    }
+
+    internal class ServiceMediator : IServiceMediator
+    {
+        public ServiceMediator(SettingsService settings, AliasService aliases)
+        {
+            Settings = settings;
+            Aliases = aliases;
+        }
+
+        //Members
+        public string RequestSetting(string setting)
+        {
+            return Settings.GetSettingValue(setting);
+        }
+        public string RequestName(string alias)
+        {
+            return Aliases.GetName(alias);
+        }
+
+        //Properties
+        public SettingsService Settings { private get; set; }
+        public AliasService Aliases { private get; set; }
+    }
+    */
+
+    //STILL NEED TO IMPLEMENT FAULTS FOR WCF
+    [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Single, InstanceContextMode = InstanceContextMode.Single)]
+    internal partial class ServiceManager : ServiceContracts.ISettings
+    {
+        public ServiceManager(string filePath)
+        {
+            Settings = new Data.SettingsData(filePath);
+        }
+
+        //Service Methods
+        public void ServiceContracts.ISettings.Update(Dictionary<string, string> data)
+        {
+            try
+            {
+                Settings.Update(data);
+            }
+            catch (ArgumentException ex)
+            {
+                //re-throw as Fault
+            }
+        }
+        public void ServiceContracts.ISettings.Default(string setting)
+        {
+            try
+            {
+                Settings.Default(setting);
+            }
+            catch (ArgumentException ex)
+            {
+                //re-throw as Fault
+            }
+        }
+        public void ServiceContracts.ISettings.DefaultAll()
+        {
+            Settings.DefaultAll();
+        }
+        public void ServiceContracts.ISettings.Save()
+        {
+            Settings.Save();
+        }
+        public Dictionary<string, string> ServiceContracts.ISettings.Load()
+        {
+            return Settings.Load();
+        }
+
+        //Members
+        private Data.SettingsData Settings;
+    }
+
+    internal partial class ServiceManager : ServiceContracts.IAlias
+    {
+        public ServiceManager(string filePath)
+        {
+            Aliases = new Data.AliasData(filePath);
+        }
+
+        //Service Methods
+        public void ServiceContracts.IAlias.Add(Dictionary<string, string> data)
+        {
+            Aliases.Add(data);
+        }
+        public void ServiceContracts.IAlias.Remove(string alias)
+        {
+            Aliases.Remove(alias);
+        }
+        public void ServiceContracts.IAlias.Clear()
+        {
+            Aliases.Clear();
+        }
+        public void ServiceContracts.IAlias.Save()
+        {
+            Aliases.Save();
+        }
+        public Dictionary<string, string> ServiceContracts.IAlias.Load()
+        {
+            return Aliases.Load();
+        }
+        public void ServiceContracts.IAlias.ClearSaved()
+        {
+            Aliases.ClearSaved();
+        }
+
+        //Members
+        private Data.AliasData Aliases;
+    }
+
+    internal partial class ServiceManager : ServiceContracts.IDownload
+    {
+        public ServiceManager(string filePath)
+        {
+            Downloads = new Data.DownloadData(filePath);
+        }
+
+        //Service Methods
+        void ServiceContracts.IDownload.Add(string name, List<int> packets)
+        {
+            try
+            {
+                Downloads.Add(name, packets);
+            }
+            catch (ArgumentException ex)
+            {
+                //re-throw as Fault
+            }
+        }
+        void ServiceContracts.IDownload.Remove(Dictionary<string, List<int>> data)
+        {
+            try
+            {
+                Downloads.Remove(data);
+            }
+            catch (ArgumentException ex)
+            {
+                //re-throw as Fault
+            }
+        }
+        void ServiceContracts.IDownload.Remove(string name)
+        {
+            try
+            {
+                Downloads.Remove(name);
+            }
+            catch (ArgumentException ex)
+            {
+                //re-throw as Fault
+            }
+        }
+        void ServiceContracts.IDownload.Clear()
+        {
+            Downloads.Clear();
+        }
+        void ServiceContracts.IDownload.Save()
+        {
+            Downloads.Save();
+        }
+        OrderedDictionary ServiceContracts.IDownload.Load()
+        {
+            return Downloads.Load();
+        }
+        void ServiceContracts.IDownload.ClearSaved()
+        {
+            Downloads.ClearSaved();
+        }
+
+        //Members
+        private Data.DownloadData Downloads;
+    }
+
+    internal partial class ServiceManager : ServiceContracts.IDownloadCallback
+    {
+        void ServiceContracts.IDownloadCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus status)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -53,7 +53,7 @@ namespace AutoDL
 
             SaveFile(config, "appSettings");
         }
-        public void Save(SettingsData newSettings)
+        public void Save(Data.SettingsData newSettings)
         {
             Configuration config = OpenConfigFile();
 
@@ -77,7 +77,7 @@ namespace AutoDL
 
             base.SaveFile(config, "appSettings");
         }
-        public Dictionary<string, string> Load(SettingsData settings)
+        public Dictionary<string, string> Load(Data.SettingsData settings)
         {
             Dictionary<string, string> loadedSettings = new Dictionary<string, string>();
             Configuration config = OpenConfigFile();
@@ -106,7 +106,7 @@ namespace AutoDL
                 SaveFile(config);
             }
         }
-        public void Save(AliasData aliases)
+        public void Save(Data.AliasData aliases)
         {
             Configuration config = OpenConfigFile();
             AliasSection aliasSection = config.GetSection(AliasSection.SECTION_NAME) as AliasSection;
@@ -123,7 +123,7 @@ namespace AutoDL
 
             base.SaveFile(config, AliasSection.SECTION_NAME);
         }
-        public Dictionary<string, string> Load(AliasData data)
+        public Dictionary<string, string> Load(Data.AliasData data)
         {
             Configuration config = OpenConfigFile();
             AliasSection aliasSection = config.GetSection(AliasSection.SECTION_NAME) as AliasSection;
@@ -158,7 +158,7 @@ namespace AutoDL
                 SaveFile(config);
             }
         }
-        public void Save(DownloadData queue)
+        public void Save(Data.DownloadData queue)
         {
             Download nextItem = queue.NextDownload();
             if (nextItem.Name != null)
@@ -188,7 +188,7 @@ namespace AutoDL
                 base.SaveFile(config, DLQueueSection.SECTION_NAME);
             }
         }
-        public OrderedDictionary Load(DownloadData queue)
+        public OrderedDictionary Load(Data.DownloadData queue)
         {
             Configuration config = OpenConfigFile();
 

@@ -1,7 +1,5 @@
 ﻿/*
- * TO-DO: Fix this jumbled mess.  KeyValueData<K,V> isn't really necessary
- * anymore.  Maybe just make it a non-generic class so I don't have to copy-paste
- * all the IEnumerable stuff.
+ * TO-DO: Fix this jumbled mess.
  * 
  * Also tidy up the classes now that ServiceContracts are finalized.  And re-write some
  * of the bool-returns since I'll be using exceptions now instead.
@@ -13,55 +11,39 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Runtime.Serialization;
 
-namespace AutoDL
+namespace AutoDL.Data
 {
-    internal abstract class KeyValueData<K,V> : IEnumerable<K>
+    internal interface IHaveSettings
     {
-        public KeyValueData()
-        {
-            Data = new Dictionary<K, V>();
-        }
-
-        //Indexer
-        public virtual V this[K key]
-        {
-            get
-            {
-                if (Data.ContainsKey(key))
-                {
-                    return Data[key];
-                }
-                return default(V);
-            }
-
-            set { }
-        }
-
-        //Members
-        protected Dictionary<K, V> Data;
-
-        //IEnumberable Implementation
-        public IEnumerator<K> GetEnumerator()
-        {
-            foreach (K key in Data.Keys)
-            {
-                yield return key;
-            }
-        }
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
-        {
-            return this.GetEnumerator();
-        }
+        public string this[string setting] { get; }
     }
 
-    internal class SettingsData : KeyValueData<string, string>
+    internal interface IHaveAliases
     {
+        public string this[string alias] { get; }
+    }
+
+    /* Class: SettingsData
+     * Description: Handles download settings.
+     */
+    internal class SettingsData : IHaveSettings, IEnumerable<string>
+    {
+        public SettingsData(string filePath)
+        {
+            Data = new Dictionary<string, string>();
+            this.FilePath = filePath;
+        }
+
         //Indexer
-        public override string this[string setting]
+        public string this[string setting]
         {
             get
             {
-                return base[setting];
+                if (Data.ContainsKey(setting))
+                {
+                    return Data[setting];
+                }
+                return null;
             }           
 
             set
@@ -105,6 +87,10 @@ namespace AutoDL
         {
             foreach (KeyValuePair<string, string> setting in settings)
             {
+                if (this[setting.Key] == null)
+                {
+                    throw new ArgumentException("Settings Update: Invalid Key: " + setting.Key);
+                }
                 this[setting.Key] = setting.Value;
             }
         }
@@ -118,6 +104,8 @@ namespace AutoDL
                 case DELAY:
                     this[key] = "5";
                     break;
+                default:
+                    throw new ArgumentException("Settings Default: Invalid Key: " + key);
             }
         }
         public void DefaultAll()
@@ -125,20 +113,58 @@ namespace AutoDL
             this[RETRY] = "False";
             this[DELAY] = "5";
         }
+        public void Save()
+        {
+            SettingsConfig SettingsFile = new SettingsConfig(FilePath);
+            SettingsFile.Save(this);
+        }
+        public Dictionary<string, string> Load()
+        {
+            SettingsConfig SettingsFile = new SettingsConfig(FilePath);
+            return SettingsFile.Load(this);
+        }
 
         //Members
         private const string RETRY = "RetryFailedDownload";
         private const string DELAY = "DownloadDelay";
+        private Dictionary<string, string> Data;
+        private string FilePath;
+
+        //IEnumberable Implementation
+        public IEnumerator<string> GetEnumerator()
+        {
+            foreach (string key in Data.Keys)
+            {
+                yield return key;
+            }
+        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return this.GetEnumerator();
+        }
     }
 
-    internal class AliasData : KeyValueData<string, string>
+    /* Class: AliasData
+     * Description: Handles the alias feature.
+     */
+    internal class AliasData : IHaveAliases, IEnumerable<string>
     {
+        public AliasData(string filePath)
+        {
+            this.FilePath = filePath;
+            Data = new Dictionary<string, string>();
+        }
+
         //Indexer
-        public override string this[string alias]
+        public string this[string alias]
         {
             get
             {
-                return base[alias];
+                if (Data.ContainsKey(alias))
+                {
+                    return Data[alias];
+                }
+                return null;
             }
 
             set
@@ -165,21 +191,58 @@ namespace AutoDL
                 this[alias.Key] = alias.Value;
             }
         }
-        public bool Remove(string alias)
+        public void Remove(string alias)
         {
-            return Data.Remove(alias);
+            Data.Remove(alias);
         }
         public void Clear()
         {
             Data.Clear();
         }
+        public void Save()
+        {
+            AliasConfig AliasFile = new AliasConfig(FilePath);
+            AliasFile.Save(this);
+        }
+        public Dictionary<string, string> Load()
+        {
+            AliasConfig AliasFile = new AliasConfig(FilePath);
+            return AliasFile.Load(this);
+        }
+        public void ClearSaved()
+        {
+            AliasConfig AliasFile = new AliasConfig(FilePath);
+            AliasFile.ClearSaved();
+        }
+
+        //Members
+        private Dictionary<string, string> Data;
+        private string FilePath;
+
+        //IEnumberable Implementation
+        public IEnumerator<string> GetEnumerator()
+        {
+            foreach (string key in Data.Keys)
+            {
+                yield return key;
+            }
+        }
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return this.GetEnumerator();
+        }
     }
 
+    /* Class: DownloadData
+     * Description: Handles all functionality related to the
+     *              download feature.
+     */
     internal class DownloadData : IEnumerable<string>
     {
-        public DownloadData()
+        public DownloadData(string filePath)
         {
             Data = new OrderedDictionary();
+            this.FilePath = filePath;
         }
 
         //Indexer
@@ -253,6 +316,22 @@ namespace AutoDL
         {
             Data.Clear();
         }
+        public void Save()
+        {
+            QueueConfig QueueFile = new QueueConfig(FilePath);
+            QueueFile.Save(this);
+        }
+        public OrderedDictionary Load()
+        {
+            QueueConfig QueueFile = new QueueConfig(FilePath);
+            return QueueFile.Load(this);
+        }
+        public void ClearSaved()
+        {
+            QueueConfig QueueFile = new QueueConfig(FilePath);
+            QueueFile.ClearSaved();
+        }       
+
         //CHANGE TO REMOVE/SEARCH IF INVALID BOT IS ENCOUNTERED
         public Download NextDownload()
         {
@@ -282,6 +361,7 @@ namespace AutoDL
 
         //Members
         private OrderedDictionary Data;
+        private string FilePath;
 
         //IEnumberable Implementation
         public IEnumerator<string> GetEnumerator()
@@ -312,9 +392,6 @@ namespace AutoDL
         public InvalidDownloadException(string message) : base(message) { }
     }
 
-    /* Exception: InvalidPacketException
-     * Description: Thrown if adding a bot with no valid packets.
-     */
     [Serializable]
     internal class InvalidPacketException : Exception
     {
