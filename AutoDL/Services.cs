@@ -1,5 +1,5 @@
 ﻿/*
- * TO-DO: Finish up. SendDownload(), Faults, IDownloadCallback impl, etc.
+ * TO-DO: Finish up. SendDownload(), Faults, etc.
  */
 
 
@@ -180,13 +180,5 @@ namespace AutoDL.Services
         //Members
         private Data.DownloadData Downloads;
         private Action<Data.Download> WrapperCallback;
-    }
-
-    internal partial class ServiceManager : ServiceContracts.IDownloadCallback
-    {
-        void ServiceContracts.IDownloadCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus status)
-        {
-            throw new NotImplementedException();
-        }
     }
 }
