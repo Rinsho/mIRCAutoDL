@@ -1,8 +1,5 @@
 ﻿/*
- * TO-DO: Fix this jumbled mess.
- * 
- * Also tidy up the classes now that ServiceContracts are finalized.  And re-write some
- * of the bool-returns since I'll be using exceptions now instead.
+ * TO-DO: Finish up.  Deal with edge-cases in NextDownload()
  */
 
 using System;
@@ -125,8 +122,8 @@ namespace AutoDL.Data
         }
 
         //Members
-        private const string RETRY = "RetryFailedDownload";
-        private const string DELAY = "DownloadDelay";
+        public const string RETRY = "RetryFailedDownload";
+        public const string DELAY = "DownloadDelay";
         private Dictionary<string, string> Data;
         private string FilePath;
 
@@ -332,7 +329,6 @@ namespace AutoDL.Data
             QueueFile.ClearSaved();
         }       
 
-        //CHANGE TO REMOVE/SEARCH IF INVALID BOT IS ENCOUNTERED
         public Download NextDownload()
         {
             Download nextDownload = new Download();

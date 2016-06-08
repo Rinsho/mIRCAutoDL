@@ -1,11 +1,5 @@
 ﻿/*
- * TO-DO: Fix up this jumbled mess. /facepalm
- * 
- * Think about using async and await Task.Delay instead of Timer?
- * 
- * Consider implementing a ServiceManager class that holds each
- * Service class.  This would decouple using the settings/alias
- * services from the download service.  Seems sloppy right now.
+ * TO-DO: Finish up. SendDownload(), Faults, IDownloadCallback impl, etc.
  */
 
 
@@ -17,79 +11,6 @@ using System.ServiceModel;
 
 namespace AutoDL.Services
 {
-    internal class DownloadManager
-    {     
-        public void DownloadStatusUpdate(ServiceContracts.DownloadStatus status)
-        {
-            //SPLIT BETWEEN AUTODL UPDATE AND THIS
-            if (!(status == DownloadStatus.Success) && Convert.ToBoolean(SettingsMgr.GetSettingValue("RetryFailedDownload")))
-            {
-                //SEND DOWNLOAD AGAIN
-                //UPDATE UI
-            }
-            else
-            {
-                this.SendNextDownload();
-            }
-        }
-
-        //SendNextDownload: Uses callback to send next download to wrapper
-        //                  after "DownloadDelay" seconds.
-        private void SendNextDownload()
-        {
-            //REMOVE MOST RECENT DOWNLOAD
-
-            int downloadDelay = Convert.ToInt32(SettingsMgr.GetSettingValue("DownloadDelay"));
-            Timer DelayTimer = new Timer(new TimerCallback(x =>
-            {
-                try
-                {
-                    DLCallback(Queue.NextDownload());
-                }
-                finally
-                {
-                    (x as Timer).Dispose();
-                }
-            }));
-            DelayTimer.Change(downloadDelay * 1000, Timeout.Infinite);
-
-            //UPDATE UI
-        }
-
-    }
-
-    /* MEDIATOR
-    internal interface IServiceMediator
-    {
-        public string RequestSetting(string setting);
-        public string RequestName(string alias);
-    }
-
-    internal class ServiceMediator : IServiceMediator
-    {
-        public ServiceMediator(SettingsService settings, AliasService aliases)
-        {
-            Settings = settings;
-            Aliases = aliases;
-        }
-
-        //Members
-        public string RequestSetting(string setting)
-        {
-            return Settings.GetSettingValue(setting);
-        }
-        public string RequestName(string alias)
-        {
-            return Aliases.GetName(alias);
-        }
-
-        //Properties
-        public SettingsService Settings { private get; set; }
-        public AliasService Aliases { private get; set; }
-    }
-    */
-
-    //STILL NEED TO IMPLEMENT FAULTS FOR WCF
     [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Single, InstanceContextMode = InstanceContextMode.Single)]
     internal partial class ServiceManager : ServiceContracts.ISettings
     {
@@ -177,24 +98,25 @@ namespace AutoDL.Services
 
     internal partial class ServiceManager : ServiceContracts.IDownload
     {
-        public ServiceManager(string filePath)
+        public ServiceManager(string filePath, Action<Data.Download> wrapperCallback)
         {
+            this.WrapperCallback = wrapperCallback;
             Downloads = new Data.DownloadData(filePath);
         }
 
         //Service Methods
-        void ServiceContracts.IDownload.Add(string name, List<int> packets)
+        public void ServiceContracts.IDownload.Add(string name, List<int> packets)
         {
             try
             {
                 Downloads.Add(name, packets);
             }
-            catch (ArgumentException ex)
+            catch (Data.InvalidPacketException ex)
             {
                 //re-throw as Fault
             }
         }
-        void ServiceContracts.IDownload.Remove(Dictionary<string, List<int>> data)
+        public void ServiceContracts.IDownload.Remove(Dictionary<string, List<int>> data)
         {
             try
             {
@@ -205,7 +127,7 @@ namespace AutoDL.Services
                 //re-throw as Fault
             }
         }
-        void ServiceContracts.IDownload.Remove(string name)
+        public void ServiceContracts.IDownload.Remove(string name)
         {
             try
             {
@@ -216,25 +138,48 @@ namespace AutoDL.Services
                 //re-throw as Fault
             }
         }
-        void ServiceContracts.IDownload.Clear()
+        public void ServiceContracts.IDownload.Clear()
         {
             Downloads.Clear();
         }
-        void ServiceContracts.IDownload.Save()
+        public void ServiceContracts.IDownload.Save()
         {
             Downloads.Save();
         }
-        OrderedDictionary ServiceContracts.IDownload.Load()
+        public OrderedDictionary ServiceContracts.IDownload.Load()
         {
             return Downloads.Load();
         }
-        void ServiceContracts.IDownload.ClearSaved()
+        public void ServiceContracts.IDownload.ClearSaved()
         {
             Downloads.ClearSaved();
         }
 
+        //Methods
+        public void SendDownload()
+        {
+            int downloadDelay = Convert.ToInt32(Settings[Data.SettingsData.DELAY]);
+            Timer DelayTimer = new Timer(new TimerCallback(x =>
+            {
+                try
+                {
+                    WrapperCallback(Downloads.NextDownload());
+                }
+                catch (Data.InvalidDownloadException ex)
+                {
+                    //Re-throw as Fault
+                }
+                finally
+                {
+                    (x as Timer).Dispose();
+                }
+            }));
+            DelayTimer.Change(downloadDelay * 1000, Timeout.Infinite);
+        }
+
         //Members
         private Data.DownloadData Downloads;
+        private Action<Data.Download> WrapperCallback;
     }
 
     internal partial class ServiceManager : ServiceContracts.IDownloadCallback

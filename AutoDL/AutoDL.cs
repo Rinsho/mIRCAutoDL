@@ -1,6 +1,5 @@
 ﻿/*
- * TO-DO:  Fix up initialization after I finish the Service classes.
- * 
+ * TO-DO:  Finish up writing Wrapper methods.
  */
 
 using System;
@@ -14,15 +13,15 @@ namespace AutoDL
      */
     public class AutoDLMain : IDisposable
     {
-        public AutoDLMain(Action<Data.Download> callbackFunc, string serviceExtension, string fileSettingsName = @"\AutoDL.dll.config")
+        public AutoDLMain(Action<Data.Download> callback, string serviceExtension, string fileSettingsName = @"\AutoDL.dll.config")
         {
             FileSettingsPath += fileSettingsName;
-            queue = new Services.DownloadService(FileSettingsPath, callbackFunc);
+            Service = new Services.ServiceManager(FileSettingsPath, callback);
 
             //Service Setup
-            host = new ServiceHost(queue,
-                new Uri("net.pipe://localhost/AutoDL/" + serviceExtension));
             NetNamedPipeBinding binding = new NetNamedPipeBinding();
+            host = new ServiceHost(Service,
+                new Uri("net.pipe://localhost/AutoDL/" + serviceExtension));           
             host.AddServiceEndpoint(typeof(ServiceContracts.IDownload),
                 binding, "Download");
             host.AddServiceEndpoint(typeof(ServiceContracts.ISettings),
@@ -32,11 +31,10 @@ namespace AutoDL
             host.Open();
         }
         
-        //Wrapper Methods
-        
+        //Wrapper Methods       
         void DownloadStatusUpdate(bool success)
         {
-            //Implement
+            throw new NotImplementedException();
         }
 
         //Members       
@@ -44,26 +42,26 @@ namespace AutoDL
         ServiceHost host;
 
         //Properties
-        private Services.DownloadService queue;
+        private Services.ServiceManager Service;
         public ServiceContracts.IDownload Queue
         {
             get
             {
-                return queue as ServiceContracts.IDownload;
+                return Service as ServiceContracts.IDownload;
             }
         }
         public ServiceContracts.ISettings Settings
         {
             get
             {
-                return queue.SettingsMgr as ServiceContracts.ISettings;
+                return Service as ServiceContracts.ISettings;
             }
         }
         public ServiceContracts.IAlias Aliases
         {
             get
             {
-                return queue.AliasMgr as ServiceContracts.IAlias;
+                return Service as ServiceContracts.IAlias;
             }
         }
 

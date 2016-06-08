@@ -1,4 +1,8 @@
-﻿using System;
+﻿/*
+ * TO-DO: Comments.
+ */
+
+using System;
 using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.Configuration;
@@ -160,7 +164,7 @@ namespace AutoDL
         }
         public void Save(Data.DownloadData queue)
         {
-            Download nextItem = queue.NextDownload();
+            Data.Download nextItem = queue.NextDownload();
             if (nextItem.Name != null)
             {
                 Configuration config = OpenConfigFile();
