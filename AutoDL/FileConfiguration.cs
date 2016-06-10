@@ -1,5 +1,6 @@
 ﻿/*
  * TO-DO: Comments.
+ * Update NextDownload(bool)
  */
 
 using System;
@@ -86,12 +87,13 @@ namespace AutoDL
             Dictionary<string, string> loadedSettings = new Dictionary<string, string>();
             Configuration config = OpenConfigFile();
 
+            string value;
             foreach (string setting in config.AppSettings.Settings.AllKeys)
             {
-                loadedSettings.Add(setting, config.AppSettings.Settings[setting].Value);
+                value = config.AppSettings.Settings[setting].Value;
+                loadedSettings.Add(setting, value);
+                settings.Update(setting, value);
             }
-
-            settings.Update(loadedSettings);
             return loadedSettings;
         }
     }
@@ -135,8 +137,8 @@ namespace AutoDL
             foreach (AliasElement alias in aliasSection.Aliases)
             {
                 loaded.Add(alias.Alias, alias.Name);
+                data.Add(alias.Alias, alias.Name);
             }
-            data.Add(loaded);
             return loaded;
         }
         public void ClearSaved()
@@ -164,7 +166,7 @@ namespace AutoDL
         }
         public void Save(Data.DownloadData queue)
         {
-            Data.Download nextItem = queue.NextDownload();
+            Data.Download nextItem = queue.NextDownload(false);
             if (nextItem.Name != null)
             {
                 Configuration config = OpenConfigFile();
@@ -183,7 +185,7 @@ namespace AutoDL
                         packetItem.Packet = nextItem.Packet;
                         packetsCollection.Add(packetItem);
                         queue.Remove(nextItem.Name, nextItem.Packet);
-                        nextItem = queue.NextDownload();
+                        nextItem = queue.NextDownload(false);
                     } while (queueItem.BotName == nextItem.Name);
 
                     queueCollection.Add(queueItem);
@@ -208,9 +210,9 @@ namespace AutoDL
                 }
 
                 loaded.Add(queueItem.BotName, loadedPackets);
+                queue.Add(queueItem.BotName, loadedPackets);
             }
 
-            queue.Add(loaded);
             queueSection.Queue.Clear();
             SaveFile(config, DLQueueSection.SECTION_NAME);
             return loaded;

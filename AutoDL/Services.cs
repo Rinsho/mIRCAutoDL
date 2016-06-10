@@ -1,9 +1,4 @@
-﻿/*
- * TO-DO: Finish up. SendDownload(), Faults, etc.
- */
-
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Threading;
@@ -14,24 +9,30 @@ namespace AutoDL.Services
     [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Single, InstanceContextMode = InstanceContextMode.Single)]
     internal partial class ServiceManager : ServiceContracts.ISettings
     {
-        public ServiceManager(string filePath)
+        //Constructor
+        private void SettingsConstructor(string filePath)
         {
             Settings = new Data.SettingsData(filePath);
         }
 
         //Service Methods
-        public void ServiceContracts.ISettings.Update(Dictionary<string, string> data)
+        void ServiceContracts.ISettings.Update(string setting, string value)
         {
             try
             {
-                Settings.Update(data);
+                Settings.Update(setting, value);
             }
             catch (ArgumentException ex)
             {
-                //re-throw as Fault
+                ServiceContracts.InvalidSettingFault fault = new ServiceContracts.InvalidSettingFault()
+                {
+                    Value = ex.ParamName,
+                    Description = ex.Message
+                };
+                throw new FaultException<ServiceContracts.InvalidSettingFault>(fault);
             }
         }
-        public void ServiceContracts.ISettings.Default(string setting)
+        void ServiceContracts.ISettings.Default(string setting)
         {
             try
             {
@@ -39,20 +40,49 @@ namespace AutoDL.Services
             }
             catch (ArgumentException ex)
             {
-                //re-throw as Fault
+                ServiceContracts.InvalidSettingFault fault = new ServiceContracts.InvalidSettingFault()
+                {
+                    Value = ex.ParamName,
+                    Description = ex.Message
+                };
+                throw new FaultException<ServiceContracts.InvalidSettingFault>(fault);
             }
         }
-        public void ServiceContracts.ISettings.DefaultAll()
+        void ServiceContracts.ISettings.DefaultAll()
         {
             Settings.DefaultAll();
         }
-        public void ServiceContracts.ISettings.Save()
+        void ServiceContracts.ISettings.Save()
         {
-            Settings.Save();
+            try
+            {
+                Settings.Save();
+            }
+            catch (System.Configuration.ConfigurationErrorsException ex)
+            {
+                ServiceContracts.ConfigurationFault fault = new ServiceContracts.ConfigurationFault()
+                {
+                    File = ex.Filename,
+                    Description = "Settings.Save(): Error accessing file."
+                };
+                throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
+            }
         }
-        public Dictionary<string, string> ServiceContracts.ISettings.Load()
+        Dictionary<string, string> ServiceContracts.ISettings.Load()
         {
-            return Settings.Load();
+            try
+            {
+                return Settings.Load();
+            }
+            catch (System.Configuration.ConfigurationErrorsException ex)
+            {
+                ServiceContracts.ConfigurationFault fault = new ServiceContracts.ConfigurationFault()
+                {
+                    File = ex.Filename,
+                    Description = "Settings.Load(): Error accessing file."
+                };
+                throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
+            }
         }
 
         //Members
@@ -61,35 +91,71 @@ namespace AutoDL.Services
 
     internal partial class ServiceManager : ServiceContracts.IAlias
     {
-        public ServiceManager(string filePath)
+        private void AliasConstructor(string filePath)
         {
             Aliases = new Data.AliasData(filePath);
         }
 
         //Service Methods
-        public void ServiceContracts.IAlias.Add(Dictionary<string, string> data)
+        void ServiceContracts.IAlias.Add(string alias, string name)
         {
-            Aliases.Add(data);
+            Aliases.Add(alias, name);
         }
-        public void ServiceContracts.IAlias.Remove(string alias)
+        void ServiceContracts.IAlias.Remove(string alias)
         {
             Aliases.Remove(alias);
         }
-        public void ServiceContracts.IAlias.Clear()
+        void ServiceContracts.IAlias.Clear()
         {
             Aliases.Clear();
         }
-        public void ServiceContracts.IAlias.Save()
+        void ServiceContracts.IAlias.Save()
         {
-            Aliases.Save();
+            try
+            {
+                Aliases.Save();
+            }
+            catch (System.Configuration.ConfigurationErrorsException ex)
+            {
+                ServiceContracts.ConfigurationFault fault = new ServiceContracts.ConfigurationFault()
+                {
+                    File = ex.Filename,
+                    Description = "Alias.Save(): Error accessing file."
+                };
+                throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
+            }
         }
-        public Dictionary<string, string> ServiceContracts.IAlias.Load()
+        Dictionary<string, string> ServiceContracts.IAlias.Load()
         {
-            return Aliases.Load();
+            try
+            {
+                return Aliases.Load();
+            }
+            catch (System.Configuration.ConfigurationErrorsException ex)
+            {
+                ServiceContracts.ConfigurationFault fault = new ServiceContracts.ConfigurationFault()
+                {
+                    File = ex.Filename,
+                    Description = "Alias.Load(): Error accessing file."
+                };
+                throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
+            }
         }
-        public void ServiceContracts.IAlias.ClearSaved()
+        void ServiceContracts.IAlias.ClearSaved()
         {
-            Aliases.ClearSaved();
+            try
+            {
+                Aliases.ClearSaved();
+            }
+            catch (System.Configuration.ConfigurationErrorsException ex)
+            {
+                ServiceContracts.ConfigurationFault fault = new ServiceContracts.ConfigurationFault()
+                {
+                    File = ex.Filename,
+                    Description = "Alias.ClearSaved(): Error accessing file."
+                };
+                throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
+            }
         }
 
         //Members
@@ -98,76 +164,154 @@ namespace AutoDL.Services
 
     internal partial class ServiceManager : ServiceContracts.IDownload
     {
-        public ServiceManager(string filePath, Action<Data.Download> wrapperCallback)
+        internal ServiceManager(string filePath, Action<Data.Download> wrapperCallback)
         {
             this.WrapperCallback = wrapperCallback;
+            ClientCallback = OperationContext.Current.GetCallbackChannel<ServiceContracts.IDownloadCallback>();
             Downloads = new Data.DownloadData(filePath);
+            SettingsConstructor(filePath);
+            AliasConstructor(filePath);
         }
 
         //Service Methods
-        public void ServiceContracts.IDownload.Add(string name, List<int> packets)
+        void ServiceContracts.IDownload.Add(string name, List<int> packets)
         {
             try
             {
+                foreach (string alias in Aliases)
+                {
+                    if (name == alias)
+                    {
+                        name = Aliases[alias];
+                    }
+                }
                 Downloads.Add(name, packets);
+                if (Downloads.IsDownloading == false)
+                {
+                    this.StartDownload();
+                }
             }
             catch (Data.InvalidPacketException ex)
             {
-                //re-throw as Fault
+                ServiceContracts.InvalidPacketFault fault = new ServiceContracts.InvalidPacketFault()
+                {
+                    Name = ex.Name,
+                    Description = ex.Message
+                };
+                throw new FaultException<ServiceContracts.InvalidPacketFault>(fault);
             }
         }
-        public void ServiceContracts.IDownload.Remove(Dictionary<string, List<int>> data)
+        void ServiceContracts.IDownload.Remove(string name, List<int> packets)
         {
-            try
+            foreach (string alias in Aliases)
             {
-                Downloads.Remove(data);
+                if (name == alias)
+                {
+                    name = Aliases[alias];
+                }
             }
-            catch (ArgumentException ex)
-            {
-                //re-throw as Fault
-            }
+            Downloads.Remove(name, packets);
         }
-        public void ServiceContracts.IDownload.Remove(string name)
+        void ServiceContracts.IDownload.Remove(string name)
         {
-            try
+            foreach (string alias in Aliases)
             {
-                Downloads.Remove(name);
+                if (name == alias)
+                {
+                    name = Aliases[alias];
+                }
             }
-            catch (ArgumentException ex)
-            {
-                //re-throw as Fault
-            }
+            Downloads.Remove(name);
         }
-        public void ServiceContracts.IDownload.Clear()
+        void ServiceContracts.IDownload.Clear()
         {
             Downloads.Clear();
         }
-        public void ServiceContracts.IDownload.Save()
+        void ServiceContracts.IDownload.Save()
         {
-            Downloads.Save();
+            try
+            {
+                Downloads.Save();
+            }
+            catch (System.Configuration.ConfigurationErrorsException ex)
+            {
+                ServiceContracts.ConfigurationFault fault = new ServiceContracts.ConfigurationFault()
+                {
+                    File = ex.Filename,
+                    Description = "Download.Save(): Error accessing file."
+                };
+                throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
+            }
         }
-        public OrderedDictionary ServiceContracts.IDownload.Load()
+        OrderedDictionary ServiceContracts.IDownload.Load()
         {
-            return Downloads.Load();
+            try
+            {
+                return Downloads.Load();
+            }
+            catch (System.Configuration.ConfigurationErrorsException ex)
+            {
+                ServiceContracts.ConfigurationFault fault = new ServiceContracts.ConfigurationFault()
+                {
+                    File = ex.Filename,
+                    Description = "Download.Load(): Error accessing file."
+                };
+                throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
+            }
         }
-        public void ServiceContracts.IDownload.ClearSaved()
+        void ServiceContracts.IDownload.ClearSaved()
         {
-            Downloads.ClearSaved();
+            try
+            {
+                Downloads.ClearSaved();
+            }
+            catch (System.Configuration.ConfigurationErrorsException ex)
+            {
+                ServiceContracts.ConfigurationFault fault = new ServiceContracts.ConfigurationFault()
+                {
+                    File = ex.Filename,
+                    Description = "Download.ClearSaved(): Error accessing file."
+                };
+                throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
+            }
         }
 
         //Methods
-        public void SendDownload()
+        public void StartDownload()
         {
+            Downloads.IsDownloading = true;
+            Data.Download download = Downloads.NextDownload(true);
+            WrapperCallback(download);
+            ClientCallback.Downloading(download.Name, download.Packet);
+        }
+        public void SendDownload(bool success)
+        {
+            bool retry = (!success && Convert.ToBoolean(Settings[Data.SettingsData.RETRY]));
             int downloadDelay = Convert.ToInt32(Settings[Data.SettingsData.DELAY]);
+            if (success)
+            {
+                ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.Success);
+            }
+            else if (retry)
+            {
+                ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.Retry);
+            }
+            else
+            {
+                ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.Fail);
+            }
+
             Timer DelayTimer = new Timer(new TimerCallback(x =>
             {
                 try
-                {
-                    WrapperCallback(Downloads.NextDownload());
+                {             
+                    Data.Download download = Downloads.NextDownload(retry);
+                    WrapperCallback(download);
+                    ClientCallback.Downloading(download.Name, download.Packet);
                 }
-                catch (Data.InvalidDownloadException ex)
+                catch (Data.InvalidDownloadException)
                 {
-                    //Re-throw as Fault
+                    ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.QueueComplete);
                 }
                 finally
                 {
@@ -180,5 +324,6 @@ namespace AutoDL.Services
         //Members
         private Data.DownloadData Downloads;
         private Action<Data.Download> WrapperCallback;
+        private ServiceContracts.IDownloadCallback ClientCallback;
     }
 }

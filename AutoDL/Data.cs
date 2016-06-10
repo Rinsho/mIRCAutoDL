@@ -1,29 +1,14 @@
-﻿/*
- * TO-DO: Finish up.  Deal with edge-cases in NextDownload()
- */
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
-using System.Runtime.Serialization;
 
 namespace AutoDL.Data
 {
-    internal interface IHaveSettings
-    {
-        public string this[string setting] { get; }
-    }
-
-    internal interface IHaveAliases
-    {
-        public string this[string alias] { get; }
-    }
-
     /* Class: SettingsData
      * Description: Handles download settings.
      */
-    internal class SettingsData : IHaveSettings, IEnumerable<string>
+    internal class SettingsData : IEnumerable<string>
     {
         public SettingsData(string filePath)
         {
@@ -32,16 +17,12 @@ namespace AutoDL.Data
         }
 
         //Indexer
-        public string this[string setting]
+        internal string this[string setting]
         {
             get
             {
-                if (Data.ContainsKey(setting))
-                {
-                    return Data[setting];
-                }
-                return null;
-            }           
+                return Data[setting];
+            }
 
             set
             {
@@ -59,6 +40,10 @@ namespace AutoDL.Data
                                 Data.Add(setting, value);
                             }
                         }
+                        else
+                        {
+                            throw new ArgumentException("Settings: Invalid RetryFailedDownload value (True|False)", value);
+                        }
                         break;
                     case DELAY:
                         int val;
@@ -74,22 +59,23 @@ namespace AutoDL.Data
                                 Data.Add(setting, value);
                             }
                         }
+                        else
+                        {
+                            throw new ArgumentException("Settings: Invalid DownloadDelay value (Int32 > 0)", value);
+                        }
                         break;
                 }
             }
         }
 
         //Methods
-        public void Update(Dictionary<string, string> settings)
+        public void Update(string setting, string value)
         {
-            foreach (KeyValuePair<string, string> setting in settings)
+            if (!Data.ContainsKey(setting))
             {
-                if (this[setting.Key] == null)
-                {
-                    throw new ArgumentException("Settings Update: Invalid Key: " + setting.Key);
-                }
-                this[setting.Key] = setting.Value;
+                throw new ArgumentException("Settings.Update(): Invalid Setting", setting);
             }
+            this[setting] = value;
         }
         public void Default(string key)
         {
@@ -102,7 +88,7 @@ namespace AutoDL.Data
                     this[key] = "5";
                     break;
                 default:
-                    throw new ArgumentException("Settings Default: Invalid Key: " + key);
+                    throw new ArgumentException("Settings.Default(): Invalid Setting", key);
             }
         }
         public void DefaultAll()
@@ -144,7 +130,7 @@ namespace AutoDL.Data
     /* Class: AliasData
      * Description: Handles the alias feature.
      */
-    internal class AliasData : IHaveAliases, IEnumerable<string>
+    internal class AliasData : IEnumerable<string>
     {
         public AliasData(string filePath)
         {
@@ -153,15 +139,11 @@ namespace AutoDL.Data
         }
 
         //Indexer
-        public string this[string alias]
+        internal string this[string alias]
         {
             get
             {
-                if (Data.ContainsKey(alias))
-                {
-                    return Data[alias];
-                }
-                return null;
+                return Data[alias];
             }
 
             set
@@ -181,12 +163,9 @@ namespace AutoDL.Data
         }
 
         //Methods
-        public void Add(Dictionary<string, string> aliases)
+        public void Add(string alias, string name)
         {
-            foreach (KeyValuePair<string, string> alias in aliases)
-            {
-                this[alias.Key] = alias.Value;
-            }
+            this[alias] = name;
         }
         public void Remove(string alias)
         {
@@ -240,6 +219,7 @@ namespace AutoDL.Data
         {
             Data = new OrderedDictionary();
             this.FilePath = filePath;
+            IsDownloading = false;
         }
 
         //Indexer
@@ -256,13 +236,6 @@ namespace AutoDL.Data
         }
 
         //Methods
-        public void Add(OrderedDictionary data)
-        {
-            foreach (DictionaryEntry entry in data)
-            {
-                this.Add(entry.Key as string, entry.Value as List<int>);
-            }
-        }
         public void Add(string name, List<int> packets)
         {
             if (packets.Count > 0)
@@ -278,23 +251,20 @@ namespace AutoDL.Data
             }
             else
             {
-                throw new InvalidPacketException();
+                throw new InvalidPacketException(name, "Add(): No valid packets.");
             }
         }
-        public void Remove(Dictionary<string, List<int>> data)
+        public void Remove(string name, List<int> packets)
         {
-            foreach (KeyValuePair<string, List<int>> pair in data)
+            if (packets.Count == 0)
             {
-                if (pair.Value.Count == 0)
+                this.Remove(name);
+            }
+            else
+            {
+                if (Data.Contains(name))
                 {
-                    this.Remove(pair.Key);
-                }
-                else
-                {
-                    if (Data.Contains(pair.Key))
-                    {
-                        (Data[pair.Key] as List<int>).RemoveAll((x) => pair.Value.Contains(x));
-                    }
+                    (Data[name] as List<int>).RemoveAll(x => packets.Contains(x));
                 }
             }
         }
@@ -306,7 +276,7 @@ namespace AutoDL.Data
             }
             else
             {
-                (Data[name] as List<int>).Remove(Convert.ToInt32(packet));
+                (Data[name] as List<int>).Remove((int)packet);
             }
         }
         public void Clear()
@@ -328,36 +298,56 @@ namespace AutoDL.Data
             QueueConfig QueueFile = new QueueConfig(FilePath);
             QueueFile.ClearSaved();
         }       
-
-        public Download NextDownload()
+        public Download NextDownload(bool retry)
         {
-            Download nextDownload = new Download();
-            if (Data.Count > 0)
+            if (Data.Count == 0)
             {
-                DictionaryEntry entry = (DictionaryEntry)Data[0];
-                string name = entry.Key as string;
-                List<int> packets = entry.Value as List<int>;
+                IsDownloading = false;
+                throw new InvalidDownloadException();
+            }
 
-                if (packets.Count > 0)
-                {
-                    nextDownload.Name = name;
-                    nextDownload.Packet = packets[0];
-                }
-                else
-                {
-                    throw new InvalidDownloadException(name + " is invalid.  Packet count is " + packets.Count + ".");
-                }
+            Download nextDownload = new Download();
+            DictionaryEntry entry = (DictionaryEntry)Data[0];
+            string name = entry.Key as string;
+            List<int> packets = entry.Value as List<int>;
+
+            if (retry)
+            {
+                nextDownload.Name = name;
+                nextDownload.Packet = packets[0];
+                return nextDownload;
             }
             else
             {
-                nextDownload.Name = null;
-            }
-            return nextDownload;
+                packets.RemoveAt(0);
+                while (Data.Count > 0)
+                {
+                    if (packets.Count > 0)
+                    {
+                        nextDownload.Name = name;
+                        nextDownload.Packet = packets[0];
+                        return nextDownload;
+                    }
+                    else
+                    {
+                        Data.Remove(name);
+                        if (Data.Count > 0)
+                        {
+                            entry = (DictionaryEntry)Data[0];
+                            name = entry.Key as string;
+                            packets = entry.Value as List<int>;
+                        }
+                    }
+                }
+                IsDownloading = false;
+                throw new InvalidDownloadException();
+            }     
         }
 
         //Members
         private OrderedDictionary Data;
         private string FilePath;
+        public bool IsDownloading;
 
         //IEnumberable Implementation
         public IEnumerator<string> GetEnumerator()
@@ -382,15 +372,19 @@ namespace AutoDL.Data
         public int Packet { get; set; }
     }
 
-    [Serializable]
     internal class InvalidDownloadException : Exception 
     {
-        public InvalidDownloadException(string message) : base(message) { }
+        public InvalidDownloadException() : base() { }
     }
 
-    [Serializable]
     internal class InvalidPacketException : Exception
     {
-        public InvalidPacketException() : base() { }
+        public InvalidPacketException(string name, string message) : base(message)
+        {
+            this.Name = name;
+        }
+
+        //Members
+        public string Name;
     }
 }

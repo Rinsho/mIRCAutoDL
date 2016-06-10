@@ -1,4 +1,4 @@
-// This is the main DLL file.
+//mIRC Wrapper for AutoDL program
 
 #include "stdafx.h"
 #include "mIRCWrapper.h"
@@ -7,6 +7,12 @@ HANDLE file;
 LPSTR message;
 HWND mWnd;
 
+static ref class Host
+{
+public:
+	static property AutoDLMain^ Service;
+	static property ServiceClient::AutoDLClient^ Client;
+};
 
 /* Function: CopyStringToCharArray
  * Input: mdata
@@ -43,30 +49,31 @@ void CopyCharArrayToString(char*& udata, String^% mdata)
 	mdata = (gcnew String(udata))->Trim(charToTrim);
 }
 
-void DownloadInfo(String^ downloadInfo)
+void SendDownloadInfo(AutoDL::Data::Download^ downloadInfo)
 {
 	char* dl;
-	CopyStringToCharArray(downloadInfo, dl);
+	CopyStringToCharArray(downloadInfo->Name + ITEM_SEPARATOR + downloadInfo->Packet, dl);
 	strncpy(message, dl, strlen(dl));
 	SendMessage(mWnd, WM_MCOMMAND, 1, 0);
-}
-
-void AutoDLSetup()
-{
-	//NOT STATIC ANYMORE
-	AutoDL::AutoDLMain->Setup(DownloadInfo);
-
 }
 
 #pragma region Exported functions
 
 void __stdcall LoadDll(LOADINFO* info)
 {
+	//Set mIRC LOADINFO paramaters
 	info->mKeep = true;
 	info->mUnicode = false;
+
+	//Setup file mapping with mIRC
 	file = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, MIRC_MAXBUFFER, L"mIRC");
 	message = static_cast<LPSTR>(MapViewOfFile(file, FILE_MAP_ALL_ACCESS, 0, 0, 0));
-	//CONNECT
+
+	//Start AutoDL service
+	Host::Service = gcnew AutoDLMain(gcnew Action<AutoDL::Data::Download^>(SendDownloadInfo), "mIRC");
+
+	//Setup service client
+	Host::Client = gcnew ServiceClient::AutoDLClient("mIRC");
 }
 
 int __stdcall UnloadDll(int timeout)
@@ -80,6 +87,7 @@ int __stdcall UnloadDll(int timeout)
 	//else on mIRC exit or /dll -u, clean up and unload
 	UnmapViewOfFile(message);
 	CloseHandle(file);
+	Host::Service->Close();
 	return 1;
 }
 
@@ -87,9 +95,7 @@ mIRCFunc(DownloadStatus)
 {
 	String^ mdata = gcnew String("");
 	CopyCharArrayToString(data, mdata);
-	IUpdateStatus status = gcnew UpdateStatus();
-	status.Update = mdata;
-	AutoDL.UpdateStatus(status); //or something like that, maybe use CreateFileMapping for this as well?
+	Host::Service->DownloadStatusUpdate(Convert::ToBoolean(mdata));
 	return 1;
 }
 #pragma endregion

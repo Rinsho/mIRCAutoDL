@@ -5,12 +5,11 @@
 #pragma comment(linker, "/EXPORT:UnloadDll=_UnloadDll@4")
 
 using namespace System;
-using namespace System::ServiceModel;
+using namespace AutoDL;
 
 #define MIRC_MAXBUFFER 4096
 #define WM_MCOMMAND WM_USER + 200
 #define ITEM_SEPARATOR ","
-#define BOT_SEPARATOR "#"
 #define mIRCFunc(x) int __stdcall x(HWND mWnd, HWND aWnd, char* data, char* params, bool show, bool nopause)
 
 typedef struct {
