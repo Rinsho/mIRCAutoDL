@@ -5,406 +5,233 @@ using AutoDL.ServiceContracts;
 
 namespace AutoDL.ServiceClient
 {
-    public partial class AutoDLClient : IDownload
+    public abstract class ClientBase
     {
-        public AutoDLClient(string serviceExtension)
+        //Methods
+        protected virtual void ServiceCall<TServiceType>(
+            Action<TServiceType> serviceFunction,
+            ChannelFactory<TServiceType> factory)
+            where TServiceType: class
         {
-            NetNamedPipeBinding binding = new NetNamedPipeBinding();
-            DownloadFactory = new ChannelFactory<IDownload>(
-                binding,
-                new EndpointAddress("net.pipe://localhost/AutoDL" + serviceExtension + "/Download"));
-            AliasConstructor(serviceExtension, binding);
-            SettingsConstructor(serviceExtension, binding);          
+            TServiceType channel = factory.CreateChannel();
+            try
+            {
+                serviceFunction(channel);
+                (channel as IClientChannel).Close();
+            }
+            catch (TimeoutException)
+            {
+                (channel as IClientChannel).Abort();
+                throw;
+            }
+            catch (CommunicationException)
+            {
+                (channel as IClientChannel).Abort();
+                throw;
+            }
+        }
+        protected virtual TResult ServiceCall<TServiceType, TResult>(
+            Func<TServiceType, TResult> serviceFunction,
+            ChannelFactory<TServiceType> factory)
+            where TServiceType: class
+        {
+            TServiceType channel = factory.CreateChannel();
+            try
+            {
+                TResult result = serviceFunction(channel);
+                (channel as IClientChannel).Close();
+                return result;
+            }
+            catch (TimeoutException)
+            {
+                (channel as IClientChannel).Abort();
+                throw;
+            }
+            catch (CommunicationException)
+            {
+                (channel as IClientChannel).Abort();
+                throw;
+            }
+        }
+        public abstract void OpenClient();
+        public abstract void CloseClient();
+
+        //Members
+        protected string EndpointBase = "net.pipe://localhost/AutoDL/";
+        protected static NetNamedPipeBinding Binding = new NetNamedPipeBinding();
+    }
+
+    public class DownloadClient : ClientBase, IDownload
+    {
+        public DownloadClient(InstanceContext context, string serviceExtension)
+        {
+            DownloadFactory = new DuplexChannelFactory<IDownload>(
+                context,
+                ClientBase.Binding,
+                new EndpointAddress(base.EndpointBase + serviceExtension + "/Download"));
         }
 
         //Service Methods
-        void IDownload.Add(string name, List<int> packets)
+        public void Add(string name, List<int> packets)
         {
-            DownloadChannel = DownloadFactory.CreateChannel();
-            try
-            {
-                DownloadChannel.Add(name, packets);
-                (DownloadChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            DownloadServiceCall((channel) => { channel.Add(name, packets); });
         }
-        void IDownload.Remove(string name, List<int> packets)
-        {           
-            DownloadChannel = DownloadFactory.CreateChannel();
-            try
-            {
-                DownloadChannel.Remove(name, packets);
-                (DownloadChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
+        public void Remove(string name, List<int> packets)
+        {
+            DownloadServiceCall((channel) => { channel.Remove(name, packets); });
         }
-        void IDownload.Remove(string name)
-        {        
-            DownloadChannel = DownloadFactory.CreateChannel();
-            try
-            {
-                DownloadChannel.Remove(name);
-                (DownloadChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
+        public void Remove(string name)
+        {
+            DownloadServiceCall((channel) => { channel.Remove(name); });
         }
-        void IDownload.Clear()
-        {         
-            DownloadChannel = DownloadFactory.CreateChannel();
-            try
-            {
-                DownloadChannel.Clear();
-                (DownloadChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
+        public void Clear()
+        {
+            DownloadServiceCall((channel) => { channel.Clear(); });
         }
-        void IDownload.Save()
-        {        
-            DownloadChannel = DownloadFactory.CreateChannel();
-            try
-            {
-                DownloadChannel.Save();
-                (DownloadChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
+        public void Save()
+        {
+            DownloadServiceCall((channel) => { channel.Save(); });
         }
-        System.Collections.Specialized.OrderedDictionary IDownload.Load()
-        {         
-            DownloadChannel = DownloadFactory.CreateChannel();
-            try
-            {
-                return DownloadChannel.Load();
-                (DownloadChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
+        public System.Collections.Specialized.OrderedDictionary Load()
+        {
+            return DownloadServiceCall<System.Collections.Specialized.OrderedDictionary>(
+                (channel) => { return channel.Load(); });
         }
-        void IDownload.ClearSaved()
-        {           
-            DownloadChannel = DownloadFactory.CreateChannel();
-            try
-            {
-                DownloadChannel.ClearSaved();
-                (DownloadChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (DownloadChannel as IClientChannel).Abort();
-                throw ex;
-            }
+        public void ClearSaved()
+        {
+            DownloadServiceCall((channel) => { channel.ClearSaved(); });
         }
         
-        //General Methods
-        public void CloseClient()
+        //Class Methods
+        public override void OpenClient()
+        {
+            DownloadFactory.Open();
+        }
+        public override void CloseClient()
         {
             DownloadFactory.Close();
-            AliasFactory.Close();
-            SettingsFactory.Close();
+        }
+        private void DownloadServiceCall(Action<IDownload> serviceFunction)
+        {
+            base.ServiceCall<IDownload>(serviceFunction, DownloadFactory);
+        }
+        private TResult DownloadServiceCall<TResult>(Func<IDownload, TResult> serviceFunction)
+        {
+            return base.ServiceCall<IDownload, TResult>(serviceFunction, DownloadFactory);
         }
 
         //Members
-        private ChannelFactory<IDownload> DownloadFactory;
-        private IDownload DownloadChannel;        
+        private ChannelFactory<IDownload> DownloadFactory;     
     }
 
-    public partial class AutoDLClient : IAlias
+    public class AliasClient : ClientBase, IAlias
     {
-        //Constructor
-        private void AliasConstructor(string serviceExtension, NetNamedPipeBinding binding)
+        public AliasClient(string serviceExtension)
         {
             AliasFactory = new ChannelFactory<IAlias>(
-                binding,
-                new EndpointAddress("net.pipe://localhost/AutoDL" + serviceExtension + "/Alias"));
+                ClientBase.Binding,
+                new EndpointAddress(base.EndpointBase + serviceExtension + "/Alias"));
         }
 
         //Service Methods
-        void IAlias.Add(string alias, string name)
+        public void Add(string alias, string name)
         {
-            AliasChannel = AliasFactory.CreateChannel();
-            try
-            {
-                AliasChannel.Add(alias, name);
-                (AliasChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            AliasServiceCall((channel) => { channel.Add(alias, name); });
         }
-        void IAlias.Remove(string alias)
+        public void Remove(string alias)
         {
-            AliasChannel = AliasFactory.CreateChannel();
-            try
-            {
-                AliasChannel.Remove(alias);
-                (AliasChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            AliasServiceCall((channel) => { channel.Remove(alias); });
         }
-        void IAlias.Clear()
+        public void Clear()
         {
-            AliasChannel = AliasFactory.CreateChannel();
-            try
-            {
-                AliasChannel.Clear();
-                (AliasChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            AliasServiceCall((channel) => { channel.Clear(); });
         }
-        void IAlias.Save()
+        public void Save()
         {
-            AliasChannel = AliasFactory.CreateChannel();
-            try
-            {
-                AliasChannel.Save();
-                (AliasChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            AliasServiceCall((channel) => { channel.Save(); });
         }
-        Dictionary<string, string> IAlias.Load()
+        public Dictionary<string, string> Load()
         {
-            AliasChannel = AliasFactory.CreateChannel();
-            try
-            {
-                return AliasChannel.Load();
-                (AliasChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            return AliasServiceCall<Dictionary<string, string>>((channel) => { return channel.Load(); });
         }
-        void IAlias.ClearSaved()
+        public void ClearSaved()
         {
-            AliasChannel = AliasFactory.CreateChannel();
-            try
-            {
-                AliasChannel.ClearSaved();
-                (AliasChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (AliasChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            AliasServiceCall((channel) => { channel.ClearSaved(); });
+        }
+
+        //Class Methods
+        public override void OpenClient()
+        {
+            AliasFactory.Open();
+        }
+        public override void CloseClient()
+        {
+            AliasFactory.Close();
+        }
+        private void AliasServiceCall(Action<IAlias> serviceFunction)
+        {
+            base.ServiceCall<IAlias>(serviceFunction, AliasFactory);
+        }
+        private TResult AliasServiceCall<TResult>(Func<IAlias, TResult> serviceFunction)
+        {
+            return base.ServiceCall<IAlias, TResult>(serviceFunction, AliasFactory);
         }
 
         //Members
         private ChannelFactory<IAlias> AliasFactory;
-        private IAlias AliasChannel;
     }
 
-    public partial class AutoDLClient : ISettings
+    public class SettingsClient : ClientBase, ISettings
     {
         //Constructor
-        private void SettingsConstructor(string serviceExtension, NetNamedPipeBinding binding)
+        public SettingsClient(string serviceExtension)
         {
             SettingsFactory = new ChannelFactory<ISettings>(
-                binding,
-                new EndpointAddress("net.pipe://localhost/AutoDL" + serviceExtension + "/Settings"));
+                ClientBase.Binding,
+                new EndpointAddress(base.EndpointBase + serviceExtension + "/Settings"));
         }
 
         //Service Methods
-        void ISettings.Update(string setting, string value)
+        public void Update(string setting, string value)
         {
-            SettingsChannel = SettingsFactory.CreateChannel();
-            try
-            {
-                SettingsChannel.Update(setting, value);
-                (SettingsChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (SettingsChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (SettingsChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            SettingsServiceCall((channel) => { channel.Update(setting, value); });
         }
-        void ISettings.Default(string setting)
+        public void Default(string setting)
         {
-            SettingsChannel = SettingsFactory.CreateChannel();
-            try
-            {
-                SettingsChannel.Default(setting);
-                (SettingsChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (SettingsChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (SettingsChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            SettingsServiceCall((channel) => { channel.Default(setting); });
         }
-        void ISettings.DefaultAll()
+        public void DefaultAll()
         {
-            SettingsChannel = SettingsFactory.CreateChannel();
-            try
-            {
-                SettingsChannel.DefaultAll();
-                (SettingsChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (SettingsChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (SettingsChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            SettingsServiceCall((channel) => { channel.DefaultAll(); });
         }
-        void ISettings.Save()
+        public void Save()
         {
-            SettingsChannel = SettingsFactory.CreateChannel();
-            try
-            {
-                SettingsChannel.Save();
-                (SettingsChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (SettingsChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (SettingsChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            SettingsServiceCall((channel) => { channel.Save(); });
         }
-        Dictionary<string, string> ISettings.Load()
+        public Dictionary<string, string> Load()
         {
-            SettingsChannel = SettingsFactory.CreateChannel();
-            try
-            {
-                return SettingsChannel.Load();
-                (SettingsChannel as IClientChannel).Close();
-            }
-            catch (TimeoutException ex)
-            {
-                (SettingsChannel as IClientChannel).Abort();
-                throw ex;
-            }
-            catch (CommunicationException ex)
-            {
-                (SettingsChannel as IClientChannel).Abort();
-                throw ex;
-            }
+            return SettingsServiceCall<Dictionary<string, string>>((channel) => { return channel.Load(); });
+        }
+
+        //Class Methods
+        public override void OpenClient()
+        {
+            SettingsFactory.Open();
+        }
+        public override void CloseClient()
+        {
+            SettingsFactory.Close();
+        }
+        private void SettingsServiceCall(Action<ISettings> serviceFunction)
+        {
+            base.ServiceCall<ISettings>(serviceFunction, SettingsFactory);
+        }
+        private TResult SettingsServiceCall<TResult>(Func<ISettings, TResult> serviceFunction)
+        {
+            return base.ServiceCall<ISettings, TResult>(serviceFunction, SettingsFactory);
         }
 
         //Members
         private ChannelFactory<ISettings> SettingsFactory;
-        private ISettings SettingsChannel;
     }
 }

@@ -17,6 +17,7 @@ using namespace AutoDL;
 #define WM_MEVALUATE WM_USER + 201
 #define ITEM_SEPARATOR ','
 #define GROUP_SEPARATOR '#'
+#define SERVICE_EXTENSION "mIRC"
 #define mIRCFunc(x) int __stdcall x(HWND mWnd, HWND aWnd, char* data, char* params, bool show, bool nopause)
 
 typedef struct {
