@@ -1,6 +1,7 @@
 // AutoDL2Wrapper.h
 
 #pragma once
+#pragma comment(lib, "user32.lib")
 #pragma comment(linker, "/EXPORT:LoadDll=_LoadDll@4")
 #pragma comment(linker, "/EXPORT:UnloadDll=_UnloadDll@4")
 #pragma comment(linker, "/EXPORT:DownloadStatus=_DownloadStatus@24")

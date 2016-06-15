@@ -3,6 +3,6 @@
 // but are changed infrequently
 
 #pragma once
-#include <windows.h>
+#include <Windows.h>
 #include <vcclr.h>
 

@@ -7,16 +7,6 @@ HANDLE file;
 LPSTR message;
 HWND mWnd;
 
-static private ref class Host
-{
-public:
-	static property AutoDLMain^ Service;
-	static property DownloadCallback^ DownloadClientCallback;
-	static property ServiceClient::DownloadClient^ DownloadClient;
-	static property ServiceClient::AliasClient^ AliasClient;
-	static property ServiceClient::SettingsClient^ SettingsClient;
-};
-
 [System::ServiceModel::CallbackBehaviorAttribute(UseSynchronizationContext = false)]
 ref class DownloadCallback : ServiceContracts::IDownloadCallback
 {
@@ -29,6 +19,16 @@ public:
 	{
 		//Send update to IRC
 	}
+};
+
+ref class Host
+{
+public:
+	static AutoDLMain^ Service;
+	static DownloadCallback^ DownloadClientCallback;
+	static ServiceClient::DownloadClient^ DownloadClient;
+	static ServiceClient::AliasClient^ AliasClient;
+	static ServiceClient::SettingsClient^ SettingsClient;
 };
 
 /* Function: CopyStringToCharArray
@@ -67,11 +67,21 @@ void CopyCharArrayToString(char*& udata, String^% mdata)
 }
 
 #pragma region Download Functions
+void SendDownloadInfo(AutoDL::Data::Download^ downloadInfo)
+{
+	char* dl;
+	String^ command = "/msg " + downloadInfo->Name + " xdcc send " + downloadInfo->Packet;
+	CopyStringToCharArray(command, dl);
+	strncpy_s(message, MIRC_BUFFER, dl, _TRUNCATE);
+	SendMessage(mWnd, WM_MCOMMAND, 1, MIRC_FILEMAPNUM);
+}
+
 void __stdcall LoadDll(LOADINFO* info)
 {
 	//Set mIRC LOADINFO paramaters
 	info->mKeep = true;
 	info->mUnicode = false;
+	mWnd = info->mHwnd;
 
 	//Setup file mapping with mIRC
 	file = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, MIRC_BUFFER, MIRC_FILEMAP);
@@ -113,20 +123,11 @@ mIRCFunc(DownloadStatus)
 	Host::Service->DownloadStatusUpdate(Convert::ToBoolean(mdata));
 	return 1;
 }
-
-void SendDownloadInfo(AutoDL::Data::Download^ downloadInfo)
-{
-	char* dl;
-	String^ command = "/msg " + downloadInfo->Name + " xdcc send " + downloadInfo->Packet;
-	CopyStringToCharArray(command, dl);
-	strncpy(message, dl, strlen(dl));
-	SendMessage(mWnd, WM_MCOMMAND, 1, MIRC_FILEMAPNUM);
-}
 #pragma endregion
 
 #pragma region UI Functions
 
-void SendErrorMessage(String^% text, char*& udata)
+void SendErrorMessage(String^ text, char*& udata)
 {
 	String^ message = gcnew String("#Error,") + text;
 	CopyStringToCharArray(message, udata);
@@ -145,20 +146,20 @@ mIRCFunc(Settings_Update)
 	array<String^, 1>^ splitData = mdata->Split(ITEM_SEPARATOR);
 	try
 	{
-		static_cast<ServiceContracts::ISettings^>(Host::Client)->Update(splitData[0], splitData[1]);
+		Host::SettingsClient->Update(splitData[0], splitData[1]);
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (System::ServiceModel::FaultException<ServiceContracts::InvalidSettingFault^>^)
+	{
+		SendErrorMessage("Cannot access configuration file", data);
+	}
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::InvalidSettingFault^>^ ex)
-	{
-		SendErrorMessage("Cannot access configuration file", data);
 	}
 	return 3;
 }
@@ -169,20 +170,20 @@ mIRCFunc(Settings_Default)
 	CopyCharArrayToString(data, mdata);
 	try
 	{
-		static_cast<ServiceContracts::ISettings^>(Host::Client)->Default(mdata);
+		Host::SettingsClient->Default(mdata);
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (System::ServiceModel::FaultException<ServiceContracts::InvalidSettingFault^>^)
+	{
+		SendErrorMessage("Invalid setting value", data);
+	}
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::InvalidSettingFault^>^ ex)
-	{
-		SendErrorMessage("Invalid setting value", data);
 	}
 	return 3;
 }
@@ -191,14 +192,14 @@ mIRCFunc(Settings_DefaultAll)
 {
 	try
 	{
-		static_cast<ServiceContracts::ISettings^>(Host::Client)->DefaultAll();
+		Host::SettingsClient->DefaultAll();
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
 	}
@@ -209,20 +210,20 @@ mIRCFunc(Settings_Save)
 {
 	try
 	{
-		static_cast<ServiceContracts::ISettings^>(Host::Client)->Save();
+		Host::SettingsClient->Save();
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
+	{
+		SendErrorMessage("Cannot access configuration file", data);
+	}
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^ ex)
-	{
-		SendErrorMessage("Cannot access configuration file", data);
 	}
 	return 3;
 }
@@ -231,7 +232,7 @@ mIRCFunc(Settings_Load)
 {
 	try
 	{
-		Dictionary<String^, String^>^ settings = static_cast<ServiceContracts::ISettings^>(Host::Client)->Load();
+		Dictionary<String^, String^>^ settings = Host::SettingsClient->Load();
 		System::Text::StringBuilder^ formattedSettings = gcnew System::Text::StringBuilder();
 		for each (KeyValuePair<String^, String^>^ pair in settings)
 		{
@@ -242,17 +243,17 @@ mIRCFunc(Settings_Load)
 		}
 		CopyStringToCharArray(formattedSettings->ToString()->TrimEnd(GROUP_SEPARATOR), data);
 	}
-	catch (TimeoutException^ ex)
+	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
+	{
+		SendErrorMessage("Cannot access configuration file", data);
+	}
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}	
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^ ex)
-	{
-		SendErrorMessage("Cannot access configuration file", data);
 	}
 	return 3;
 }
@@ -266,14 +267,14 @@ mIRCFunc(Alias_Add)
 	array<String^, 1>^ splitData = mdata->Split(ITEM_SEPARATOR);
 	try
 	{
-		static_cast<ServiceContracts::IAlias^>(Host::Client)->Add(splitData[0], splitData[1]);
+		Host::AliasClient->Add(splitData[0], splitData[1]);
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
 	}
@@ -286,14 +287,14 @@ mIRCFunc(Alias_Remove)
 	CopyCharArrayToString(data, mdata);
 	try
 	{
-		static_cast<ServiceContracts::IAlias^>(Host::Client)->Remove(mdata);
+		Host::AliasClient->Remove(mdata);
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
 	}
@@ -304,14 +305,14 @@ mIRCFunc(Alias_Clear)
 {
 	try
 	{
-		static_cast<ServiceContracts::IAlias^>(Host::Client)->Clear();
+		Host::AliasClient->Clear();
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
 	}
@@ -322,20 +323,20 @@ mIRCFunc(Alias_Save)
 {
 	try
 	{
-		static_cast<ServiceContracts::IAlias^>(Host::Client)->Save();
+		Host::AliasClient->Save();
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
+	{
+		SendErrorMessage("Cannot access configuration file", data);
+	}
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^ ex)
-	{
-		SendErrorMessage("Cannot access configuration file", data);
 	}
 	return 3;
 }
@@ -344,7 +345,7 @@ mIRCFunc(Alias_Load)
 {
 	try
 	{
-		Dictionary<String^, String^>^ aliases = static_cast<ServiceContracts::IAlias^>(Host::Client)->Load();
+		Dictionary<String^, String^>^ aliases = Host::AliasClient->Load();
 		System::Text::StringBuilder^ formattedAliases = gcnew System::Text::StringBuilder();
 		for each (KeyValuePair<String^, String^>^ pair in aliases)
 		{
@@ -355,17 +356,17 @@ mIRCFunc(Alias_Load)
 		}
 		CopyStringToCharArray(formattedAliases->ToString()->TrimEnd(GROUP_SEPARATOR), data);	
 	}
-	catch (TimeoutException^ ex)
+	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
+	{
+		SendErrorMessage("Cannot access configuration file", data);
+	}
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^ ex)
-	{
-		SendErrorMessage("Cannot access configuration file", data);
 	}
 	return 3;
 }
@@ -374,20 +375,20 @@ mIRCFunc(Alias_ClearSaved)
 {
 	try
 	{
-		static_cast<ServiceContracts::IAlias^>(Host::Client)->ClearSaved();
+		Host::AliasClient->ClearSaved();
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
+	{
+		SendErrorMessage("Cannot access configuration file", data);
+	}
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^ ex)
-	{
-		SendErrorMessage("Cannot access configuration file", data);
 	}
 	return 3;
 }
@@ -407,20 +408,20 @@ mIRCFunc(Download_Add)
 	}
 	try
 	{
-		static_cast<ServiceContracts::IDownload^>(Host::Client)->Add(name, packets);
+		Host::DownloadClient->Add(name, packets);
 		SendOKMessage(data);
-	}
-	catch (TimeoutException^ ex)
-	{
-		SendErrorMessage("Timeout exception", data);
-	}
-	catch (System::ServiceModel::CommunicationException^ ex)
-	{
-		SendErrorMessage("Communication exception", data);
 	}
 	catch (System::ServiceModel::FaultException<ServiceContracts::InvalidPacketFault^>^ ex)
 	{
 		SendErrorMessage(ex->Detail->Description, data);
+	}
+	catch (TimeoutException^)
+	{
+		SendErrorMessage("Timeout exception", data);
+	}
+	catch (System::ServiceModel::CommunicationException^)
+	{
+		SendErrorMessage("Communication exception", data);
 	}
 	return 3;
 }
@@ -440,19 +441,19 @@ mIRCFunc(Download_Remove)
 	{
 		if (packets->Count > 0)
 		{
-			static_cast<ServiceContracts::IDownload^>(Host::Client)->Remove(name, packets);
+			Host::DownloadClient->Remove(name, packets);
 		}
 		else
 		{
-			static_cast<ServiceContracts::IDownload^>(Host::Client)->Remove(name);
+			Host::DownloadClient->Remove(name);
 		}
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
 	}
@@ -463,14 +464,14 @@ mIRCFunc(Download_Clear)
 {
 	try
 	{
-		static_cast<ServiceContracts::IDownload^>(Host::Client)->Clear();
+		Host::DownloadClient->Clear();
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
 	}
@@ -481,20 +482,20 @@ mIRCFunc(Download_Save)
 {
 	try
 	{
-		static_cast<ServiceContracts::IDownload^>(Host::Client)->Save();
+		Host::DownloadClient->Save();
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
+	{
+		SendErrorMessage("Cannot access configuration file", data);
+	}
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^ ex)
-	{
-		SendErrorMessage("Cannot access configuration file", data);
 	}
 	return 3;
 }
@@ -503,7 +504,7 @@ mIRCFunc(Download_Load)
 {
 	try
 	{
-		System::Collections::Specialized::OrderedDictionary^ downloads = static_cast<ServiceContracts::IDownload^>(Host::Client)->Load();
+		System::Collections::Specialized::OrderedDictionary^ downloads = Host::DownloadClient->Load();
 		System::Text::StringBuilder^ formattedDownloads = gcnew System::Text::StringBuilder();
 		for each (KeyValuePair<String^, List<int>^>^ pair in downloads)
 		{
@@ -517,17 +518,17 @@ mIRCFunc(Download_Load)
 		}
 		CopyStringToCharArray(formattedDownloads->ToString()->TrimEnd(GROUP_SEPARATOR), data);
 	}
-	catch (TimeoutException^ ex)
+	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
+	{
+		SendErrorMessage("Cannot access configuration file", data);
+	}
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^ ex)
-	{
-		SendErrorMessage("Cannot access configuration file", data);
 	}
 	return 3;
 }
@@ -536,20 +537,20 @@ mIRCFunc(Download_ClearSaved)
 {
 	try
 	{
-		static_cast<ServiceContracts::IDownload^>(Host::Client)->ClearSaved();
+		Host::DownloadClient->ClearSaved();
 		SendOKMessage(data);
 	}
-	catch (TimeoutException^ ex)
+	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
+	{
+		SendErrorMessage("Cannot access configuration file", data);
+	}
+	catch (TimeoutException^)
 	{
 		SendErrorMessage("Timeout exception", data);
 	}
-	catch (System::ServiceModel::CommunicationException^ ex)
+	catch (System::ServiceModel::CommunicationException^)
 	{
 		SendErrorMessage("Communication exception", data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^ ex)
-	{
-		SendErrorMessage("Cannot access configuration file", data);
 	}
 	return 3;
 }
