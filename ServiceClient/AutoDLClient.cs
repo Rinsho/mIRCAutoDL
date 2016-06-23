@@ -1,13 +1,29 @@
-﻿using System;
+﻿//WCF Service client for the AutoDL service.
+
+using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 using AutoDL.ServiceContracts;
 
 namespace AutoDL.ServiceClient
 {
+    /// <summary>
+    /// Base class for AutoDL service clients.
+    /// </summary>
     public abstract class ClientBase
     {
         //Methods
+
+        /// <summary>
+        /// Wrapper for service calls that handles channel creation, disposal,
+        /// and common exceptions.
+        /// </summary>
+        /// <typeparam name="TServiceType">Service contract being used.</typeparam>
+        /// <param name="serviceFunction">Service function to call.</param>
+        /// <param name="factory">ChannelFactory object for the service contract being used.</param>
+        /// <example>
+        /// ServiceCall( (channel) => { channel.ServiceFunction(); }, factory );
+        /// </example>
         protected virtual void ServiceCall<TServiceType>(
             Action<TServiceType> serviceFunction,
             ChannelFactory<TServiceType> factory)
@@ -30,6 +46,12 @@ namespace AutoDL.ServiceClient
                 throw;
             }
         }
+
+        /// <summary>
+        /// Same as <c>ServiceCall{T}</c> with the addition of a generic return type.
+        /// </summary>
+        /// <typeparam name="TResult">Type returned by the service function.</typeparam>
+        /// <returns>Result from service function call.</returns>
         protected virtual TResult ServiceCall<TServiceType, TResult>(
             Func<TServiceType, TResult> serviceFunction,
             ChannelFactory<TServiceType> factory)
@@ -53,6 +75,7 @@ namespace AutoDL.ServiceClient
                 throw;
             }
         }
+
         public abstract void OpenClient();
         public abstract void CloseClient();
 
@@ -61,8 +84,16 @@ namespace AutoDL.ServiceClient
         protected static NetNamedPipeBinding Binding = new NetNamedPipeBinding();
     }
 
+    /// <summary>
+    /// Client for the download service.
+    /// </summary>
     public class DownloadClient : ClientBase, IDownload
     {
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="context">Context for the duplex binding (context that implements the callback contract).</param>
+        /// <param name="serviceExtension">Service endpoint extension.</param>
         public DownloadClient(InstanceContext context, string serviceExtension)
         {
             DownloadFactory = new DuplexChannelFactory<IDownload>(
@@ -103,18 +134,34 @@ namespace AutoDL.ServiceClient
         }
         
         //Class Methods
+
+        /// <summary>
+        /// Explicitly opens the <c>DownloadFactory</c> for use.
+        /// </summary>
         public override void OpenClient()
         {
             DownloadFactory.Open();
         }
+
+        /// <summary>
+        /// Closes the <c>DownloadFactory</c>.
+        /// </summary>
         public override void CloseClient()
         {
             DownloadFactory.Close();
         }
+
+        /// <summary>
+        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T}</c>
+        /// </summary>
         private void DownloadServiceCall(Action<IDownload> serviceFunction)
         {
             base.ServiceCall<IDownload>(serviceFunction, DownloadFactory);
         }
+
+        /// <summary>
+        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T, R}</c>
+        /// </summary>
         private TResult DownloadServiceCall<TResult>(Func<IDownload, TResult> serviceFunction)
         {
             return base.ServiceCall<IDownload, TResult>(serviceFunction, DownloadFactory);
@@ -124,8 +171,15 @@ namespace AutoDL.ServiceClient
         private ChannelFactory<IDownload> DownloadFactory;     
     }
 
+    /// <summary>
+    /// Client for the alias service.
+    /// </summary>
     public class AliasClient : ClientBase, IAlias
     {
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="serviceExtension">Service endpoint extension.</param>
         public AliasClient(string serviceExtension)
         {
             AliasFactory = new ChannelFactory<IAlias>(
@@ -160,18 +214,34 @@ namespace AutoDL.ServiceClient
         }
 
         //Class Methods
+
+        /// <summary>
+        /// Explicitly opens the <c>AliasFactory</c> for use.
+        /// </summary>
         public override void OpenClient()
         {
             AliasFactory.Open();
         }
+
+        /// <summary>
+        /// Closes the <c>AliasFactory</c>.
+        /// </summary>
         public override void CloseClient()
         {
             AliasFactory.Close();
         }
+
+        /// <summary>
+        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T}</c>
+        /// </summary>
         private void AliasServiceCall(Action<IAlias> serviceFunction)
         {
             base.ServiceCall<IAlias>(serviceFunction, AliasFactory);
         }
+
+        /// <summary>
+        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T, R}</c>
+        /// </summary>
         private TResult AliasServiceCall<TResult>(Func<IAlias, TResult> serviceFunction)
         {
             return base.ServiceCall<IAlias, TResult>(serviceFunction, AliasFactory);
@@ -181,9 +251,15 @@ namespace AutoDL.ServiceClient
         private ChannelFactory<IAlias> AliasFactory;
     }
 
+    /// <summary>
+    /// Client for the settings service.
+    /// </summary>
     public class SettingsClient : ClientBase, ISettings
     {
-        //Constructor
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="serviceExtension">Service endpoint extension.</param>
         public SettingsClient(string serviceExtension)
         {
             SettingsFactory = new ChannelFactory<ISettings>(
@@ -214,18 +290,34 @@ namespace AutoDL.ServiceClient
         }
 
         //Class Methods
+
+        /// <summary>
+        /// Explicitly opens the <c>SettingsFactory</c> for use.
+        /// </summary>
         public override void OpenClient()
         {
             SettingsFactory.Open();
         }
+
+        /// <summary>
+        /// Closes the <c>SettingsFactory</c>.
+        /// </summary>
         public override void CloseClient()
         {
             SettingsFactory.Close();
         }
+
+        /// <summary>
+        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T}</c>
+        /// </summary>
         private void SettingsServiceCall(Action<ISettings> serviceFunction)
         {
             base.ServiceCall<ISettings>(serviceFunction, SettingsFactory);
         }
+
+        /// <summary>
+        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T, R}</c>
+        /// </summary>
         private TResult SettingsServiceCall<TResult>(Func<ISettings, TResult> serviceFunction)
         {
             return base.ServiceCall<ISettings, TResult>(serviceFunction, SettingsFactory);

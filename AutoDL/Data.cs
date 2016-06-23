@@ -1,22 +1,35 @@
-﻿using System;
+﻿//The classes which represent data and actions related to
+//settings, aliases, and the queue/downloads.
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 
 namespace AutoDL.Data
 {
-    /* Class: SettingsData
-     * Description: Handles download settings.
-     */
+    /// <summary>
+    /// Handles data and actions related to download settings.
+    /// </summary>
+    /// <remarks>
+    /// Implements <see cref="IEnumerable{T}"/>
+    /// </remarks>
     internal class SettingsData : IEnumerable<string>
     {
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="filePath">Path to the configuration file.</param>
         public SettingsData(string filePath)
         {
             Data = new Dictionary<string, string>();
             this.FilePath = filePath;
         }
 
-        //Indexer
+        /// <summary>
+        /// Indexer
+        /// </summary>
+        /// <returns>Setting's value.</returns>
         internal string this[string setting]
         {
             get
@@ -69,6 +82,8 @@ namespace AutoDL.Data
         }
 
         //Methods
+
+        /// <exception cref="System.ArgumentException">Throws when <c>setting</c> or <c>value</c> are invalid.</exception>
         public void Update(string setting, string value)
         {
             if (!Data.ContainsKey(setting))
@@ -77,18 +92,20 @@ namespace AutoDL.Data
             }
             this[setting] = value;
         }
-        public void Default(string key)
+
+        /// <exception cref="System.ArgumentException">Throws when <c>setting</c> is invalid.</exception>
+        public void Default(string setting)
         {
-            switch (key)
+            switch (setting)
             {
                 case RETRY:
-                    this[key] = "False";
+                    this[setting] = "False";
                     break;
                 case DELAY:
-                    this[key] = "5";
+                    this[setting] = "5";
                     break;
                 default:
-                    throw new ArgumentException("Settings.Default(): Invalid Setting", key);
+                    throw new ArgumentException("Settings.Default(): Invalid Setting", setting);
             }
         }
         public void DefaultAll()
@@ -127,18 +144,28 @@ namespace AutoDL.Data
         }
     }
 
-    /* Class: AliasData
-     * Description: Handles the alias feature.
-     */
+    /// <summary>
+    /// Handles data and actions related to aliases.
+    /// </summary>
+    /// <remarks>
+    /// Implements <see cref="IEnumerable{T}"/>
+    /// </remarks>
     internal class AliasData : IEnumerable<string>
     {
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="filePath">Path to the configuration file.</param>
         public AliasData(string filePath)
         {
             this.FilePath = filePath;
             Data = new Dictionary<string, string>();
         }
 
-        //Indexer
+        /// <summary>
+        /// Indexer
+        /// </summary>
+        /// <returns>Associated name.</returns>
         internal string this[string alias]
         {
             get
@@ -209,12 +236,18 @@ namespace AutoDL.Data
         }
     }
 
-    /* Class: DownloadData
-     * Description: Handles all functionality related to the
-     *              download feature.
-     */
+    /// <summary>
+    /// Handles data and actions related to the queue/downloads.
+    /// </summary>
+    /// <remarks>
+    /// Implements <see cref="IEnumerable{T}"/>
+    /// </remarks>
     internal class DownloadData : IEnumerable<string>
     {
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="filePath">Path to the configuration file.</param>
         public DownloadData(string filePath)
         {
             Data = new OrderedDictionary();
@@ -222,7 +255,11 @@ namespace AutoDL.Data
             IsDownloading = false;
         }
 
-        //Indexer
+        /// <summary>
+        /// Indexer
+        /// </summary>
+        /// <param name="key">Bot name.</param>
+        /// <returns>Associated packet list.</returns>
         public List<int> this[string key]
         {
             get
@@ -236,6 +273,8 @@ namespace AutoDL.Data
         }
 
         //Methods
+
+        /// <exception cref="InvalidPacketException">Throws when packet list is empty.</exception>
         public void Add(string name, List<int> packets)
         {
             if (packets.Count > 0)
@@ -297,7 +336,9 @@ namespace AutoDL.Data
         {
             QueueConfig QueueFile = new QueueConfig(FilePath);
             QueueFile.ClearSaved();
-        }       
+        }
+
+        /// <exception cref="InvalidDownloadException">Throws when queue is empty.</exception>
         public Download NextDownload(bool retry)
         {
             if (Data.Count == 0)
@@ -363,20 +404,26 @@ namespace AutoDL.Data
         }
     }
 
-    /* Class: Download
-     * Description: Represents a single download.
-     */
+    /// <summary>
+    /// Represents a single download.
+    /// </summary>
     public class Download
     {
         public string Name { get; set; }
         public int Packet { get; set; }
     }
 
+    /// <summary>
+    /// Represents an invalid download request (i.e. a request when no downloads exist)
+    /// </summary>
     internal class InvalidDownloadException : Exception 
     {
         public InvalidDownloadException() : base() { }
     }
 
+    /// <summary>
+    /// Represents an invalid packet list
+    /// </summary>
     internal class InvalidPacketException : Exception
     {
         public InvalidPacketException(string name, string message) : base(message)

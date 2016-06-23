@@ -1,4 +1,6 @@
-// This is the main DLL file.
+//mIRC Wrapper for ServiceClient
+//Provides a communication layer between the mIRC GUI script
+//and the service host.
 
 #include "stdafx.h"
 #include "mIRCClient.h"
@@ -7,10 +9,47 @@ HANDLE file;
 LPSTR message;
 HWND mWnd;
 
+/// <summary>
+/// Copies a managed <see cref="System.String"/> to an unmanaged <c>char</c> array.
+/// </summary>
+void CopyStringToCharArray(String^% mdata, char*& udata)
+{
+	/* Alternative:
+	* IntPtr strPtr = Marshal::StringToHGlobalAnsi(mdata);
+	* char* wch = static_cast<char*>(strPtr.ToPointer());
+	* size_t sizeInBytes = mdata->Length + 1;
+	* strncpy_s(udata, sizeInBytes, wch, _TRUNCATE);
+	* Marshal::FreeHGlobal(strPtr);
+	*/
+	pin_ptr<const wchar_t> wch = PtrToStringChars(mdata);			  //pin _data to pass to wcstombs_s
+	size_t convertedChars = 0;
+	size_t sizeInBytes = mdata->Length + 1;
+	sizeInBytes = (sizeInBytes < MIRC_DATABUFFER) ? sizeInBytes : MIRC_DATABUFFER;
+	udata = new char[sizeInBytes];
+	wcstombs_s(&convertedChars, udata, sizeInBytes, wch, _TRUNCATE);  //call wcstombs_s and prevent overwriting buffer
+}
+
+/// <summary>
+/// Copies an unmanaged <c>char</c> array to a managed <see cref="System.String"/>
+/// and trims any extra separator characters.
+/// </summary>
+void CopyCharArrayToString(char*& udata, String^% mdata)
+{
+	array<wchar_t>^ charToTrim = { ' ', ',', '#' };
+	mdata = (gcnew String(udata))->Trim(charToTrim);
+}
+
+/// <summary>
+/// Class that implements the callback contract for the download service.
+/// </summary>
 [System::ServiceModel::CallbackBehaviorAttribute(UseSynchronizationContext = false)]
 ref class DownloadCallback : ServiceContracts::IDownloadCallback
 {
 public:
+
+	/// <summary>
+	/// Calls the mIRC GUI to update the current finished download status.
+	/// </summary>
 	virtual void DownloadStatusUpdate(ServiceContracts::DownloadStatus status)
 	{
 		char* uCommand;
@@ -34,6 +73,10 @@ public:
 		strncpy_s(message, MIRC_BUFFER, uCommand, _TRUNCATE);
 		SendMessage(mWnd, WM_MCOMMAND, 1, MIRC_FILEMAPNUM);
 	}
+
+	/// <summary>
+	/// Calls the mIRC GUI to update what download is starting.
+	/// </summary>
 	virtual void Downloading(String^ name, int packet)
 	{
 		char* uCommand;
@@ -44,6 +87,9 @@ public:
 	}
 };
 
+/// <summary>
+/// Class that holds the service clients.
+/// </summary>
 ref class Host
 {
 public:
@@ -53,29 +99,12 @@ public:
 	static ServiceClient::SettingsClient^ SettingsClient;
 };
 
-void CopyStringToCharArray(String^% mdata, char*& udata)
-{
-	/* Alternative:
-	* IntPtr strPtr = Marshal::StringToHGlobalAnsi(mdata);
-	* char* wch = static_cast<char*>(strPtr.ToPointer());
-	* size_t sizeInBytes = mdata->Length + 1;
-	* strncpy_s(udata, sizeInBytes, wch, _TRUNCATE);
-	* Marshal::FreeHGlobal(strPtr);
-	*/
-	pin_ptr<const wchar_t> wch = PtrToStringChars(mdata);			  //pin _data to pass to wcstombs_s
-	size_t convertedChars = 0;
-	size_t sizeInBytes = mdata->Length + 1;
-	sizeInBytes = (sizeInBytes < MIRC_DATABUFFER) ? sizeInBytes : MIRC_DATABUFFER;
-	udata = new char[sizeInBytes];
-	wcstombs_s(&convertedChars, udata, sizeInBytes, wch, _TRUNCATE);  //call wcstombs_s and prevent overwriting buffer
-}
-
-void CopyCharArrayToString(char*& udata, String^% mdata)
-{
-	array<wchar_t>^ charToTrim = { ' ', ',', '#' };
-	mdata = (gcnew String(udata))->Trim(charToTrim);
-}
-
+/// <summary>
+/// DLL entry-point.
+/// </summary>
+/// <remarks>
+/// Called by mIRC automatically when DLL is loaded.
+/// </remarks>
 void __stdcall LoadDll(LOADINFO* info)
 {
 	//Set mIRC LOADINFO paramaters
@@ -95,6 +124,12 @@ void __stdcall LoadDll(LOADINFO* info)
 	Host::DownloadClient->OpenClient();
 }
 
+/// <summary>
+/// DLL exit-point.
+/// </summary>
+/// <remarks>
+/// Called by mIRC automatically when DLL is unloaded.
+/// </remarks>
 int __stdcall UnloadDll(int timeout)
 {
 	//if Dll is simply idle for 10 minutes
@@ -112,17 +147,32 @@ int __stdcall UnloadDll(int timeout)
 	return 1;
 }
 
+/// <summary>
+/// Sets return data to an error message.
+/// </summary>
+/// <param name="udata">mIRCFunc return data variable.</param>
 void SendErrorMessage(String^ text, char*& udata)
 {
 	String^ message = gcnew String("#Error,") + text;
 	CopyStringToCharArray(message, udata);
 }
 
+/// <summary>
+/// Sets return data to a success message.
+/// </summary>
+/// <param name="udata">mIRCFunc return data variable.</param>
 void SendOKMessage(char*& udata)
 {
 	udata = new char[]{ '#', 'O', 'K' };
 }
 
+/// <summary>
+/// Wraps client calls to handle common exceptions.
+/// </summary>
+/// <typeparam name="TReturn">Return type of the client call.</typeparam>
+/// <typeparam name="TLambda">Implicitly-determined lambda type.</typeparam>
+/// <param name="data">mIRCFunc return data variable.</param>
+/// <param name="call">Client call wrapped in lambda function.</param>
 template <typename TReturn = void, typename TLambda>
 TReturn ClientCall(char*& data, TLambda& call)
 {
@@ -141,6 +191,7 @@ TReturn ClientCall(char*& data, TLambda& call)
 }
 
 #pragma region Settings
+
 mIRCFunc(Setting_Update)
 {
 	try
@@ -228,6 +279,7 @@ mIRCFunc(Setting_Load)
 #pragma endregion
 
 #pragma region Alias
+
 mIRCFunc(Alias_Add)
 {
 	ClientCall(data, [&data]() -> void
@@ -315,6 +367,7 @@ mIRCFunc(Alias_ClearSaved)
 #pragma endregion
 
 #pragma region Download
+
 mIRCFunc(Download_Add)
 {
 	try

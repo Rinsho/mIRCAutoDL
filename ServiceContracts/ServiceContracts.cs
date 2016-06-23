@@ -1,4 +1,6 @@
-﻿using System;
+﻿//Contracts for the AutoDL service.
+
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ServiceModel;
@@ -6,10 +8,9 @@ using System.Runtime.Serialization;
 
 namespace AutoDL.ServiceContracts
 {
-    /* Interface: IDownload
-     * Description: Defines the contract for downloading.  Functions as both
-     *              the wrapper and ServiceHost contract.
-     */
+    /// <summary>
+    /// Defines the contract for using the download queue.
+    /// </summary>
     [ServiceContract(SessionMode = SessionMode.Required, CallbackContract = typeof(IDownloadCallback))]
     public interface IDownload
     {
@@ -46,10 +47,9 @@ namespace AutoDL.ServiceContracts
         void ClearSaved();
     }
 
-    /* Interface: IDownloadCallback
-     * Description: Used to update UI on status of current
-     *              download.
-     */
+    /// <summary>
+    /// Defines the callback contract for updating the UI on the current download status.
+    /// </summary>
     public interface IDownloadCallback
     {
         //Updates UI on current download
@@ -61,10 +61,9 @@ namespace AutoDL.ServiceContracts
         void Downloading(string name, int packet);
     }
 
-    /* Interface: ISettings
-     * Description: Defines the contract for handling settings.  Functions as
-     *              both the wrapper and ServiceHost contract.
-     */
+    /// <summary>
+    /// Defines the contract for managing download queue settings.
+    /// </summary>
     [ServiceContract(SessionMode = SessionMode.Allowed)]
     public interface ISettings
     {
@@ -93,10 +92,9 @@ namespace AutoDL.ServiceContracts
         Dictionary<string, string> Load();
     }
 
-    /* Interface: IAlias
-     * Description: Defines the contract for handling aliases.  Functions as
-     *              both the wrapper and ServiceHost contract.
-     */
+    /// <summary>
+    /// Defines the contract for managing aliases.
+    /// </summary>
     [ServiceContract(SessionMode = SessionMode.Allowed)]
     public interface IAlias
     {
@@ -128,6 +126,9 @@ namespace AutoDL.ServiceContracts
         void ClearSaved();
     }
 
+    /// <summary>
+    /// Class to hold <c>Fault</c> information relating to packet errors.
+    /// </summary>
     [DataContract]
     public class InvalidPacketFault
     {
@@ -137,6 +138,9 @@ namespace AutoDL.ServiceContracts
         public string Description { get; set; }
     }
 
+    /// <summary>
+    /// Class to hold <c>Fault</c> information relating to configuration file errors.
+    /// </summary>
     [DataContract]
     public class ConfigurationFault
     {
@@ -146,6 +150,9 @@ namespace AutoDL.ServiceContracts
         public string Description { get; set; }
     }
 
+    /// <summary>
+    /// Class to hold <c>Fault</c> information relating to settings errors.
+    /// </summary>
     [DataContract]
     public class InvalidSettingFault
     {
@@ -155,5 +162,8 @@ namespace AutoDL.ServiceContracts
         public string Description { get; set; }
     }
 
+    /// <summary>
+    /// Represents the status of a download.
+    /// </summary>
     public enum DownloadStatus : int { Success, Fail, Retry, QueueComplete };
 }

@@ -1,14 +1,25 @@
-﻿using System;
+﻿//Main DLL class.
+
+using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 
 namespace AutoDL
 {
-    /* Class: AutoDLMain
-     * Description: Entry-point for the DLL.  Initializes and maintains the main class DownloadManager.
-     */
+    /// <summary>
+    /// Main DLL class.  Handles service hosting and wrapper interaction.
+    /// </summary>
+    /// <remarks>
+    /// Implements <c>Dispose pattern</c>.  Call either <c>Close()</c> or <c>Dipose()</c>
+    /// when finished with object or use implicit disposal (ex. using(AutoDLMain){...})!
+    /// </remarks>
     public class AutoDLMain : IDisposable
     {
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="callback">Wrapper callback function for receiving download information.</param>
+        /// <param name="serviceExtension">Extension for configuring <c>ServiceHost</c> endpoint.</param>
         public AutoDLMain(Action<Data.Download> callback, string serviceExtension)
         {
             Service = new Services.ServiceManager(FileSettingsPath, callback);

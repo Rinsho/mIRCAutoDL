@@ -1,4 +1,6 @@
 //mIRC Wrapper for AutoDL program
+//Provides a communication layer between the unmanaged (C-based)
+//mIRC client and the managed (C#-based) service.
 
 #include "stdafx.h"
 #include "mIRCWrapper.h"
@@ -7,12 +9,18 @@ HANDLE file;
 LPSTR message;
 HWND mWnd;
 
+/// <summary>
+/// Class that holds the service.
+/// </summary>
 ref class Host
 {
 public:
 	static AutoDLMain^ Service;
 };
 
+/// <summary>
+/// Copies a managed <see cref="System.String"/> to an unmanaged <c>char</c> array.
+/// </summary>
 void CopyStringToCharArray(String^% mdata, char*& udata)
 {
 	/* Alternative:
@@ -30,6 +38,10 @@ void CopyStringToCharArray(String^% mdata, char*& udata)
 	wcstombs_s(&convertedChars, udata, sizeInBytes, wch, _TRUNCATE);  //call wcstombs_s and prevent overwriting buffer
 }
 
+/// <summary>
+/// Copies an unmanaged <c>char</c> array to a managed <see cref="System.String"/>
+/// and trims any extra separator characters.
+/// </summary>
 void CopyCharArrayToString(char*& udata, String^% mdata)
 {
 	array<wchar_t>^ charToTrim = { ' ', ',' , '#' };
@@ -38,6 +50,10 @@ void CopyCharArrayToString(char*& udata, String^% mdata)
 
 #pragma region Download Functions
 
+/// <summary>
+/// Execute download command in mIRC.
+/// </summary>
+/// <param name="downloadInfo">The download to be executed</param>
 void SendDownloadInfo(AutoDL::Data::Download^ downloadInfo)
 {
 	char* dl;
@@ -47,6 +63,12 @@ void SendDownloadInfo(AutoDL::Data::Download^ downloadInfo)
 	SendMessage(mWnd, WM_MCOMMAND, 1, MIRC_FILEMAPNUM);
 }
 
+/// <summary>
+/// DLL entry-point.
+/// </summary>
+/// <remarks>
+/// Called by mIRC automatically when DLL is loaded.
+/// </remarks>
 void __stdcall LoadDll(LOADINFO* info)
 {
 	//Set mIRC LOADINFO paramaters
@@ -62,6 +84,12 @@ void __stdcall LoadDll(LOADINFO* info)
 	Host::Service = gcnew AutoDLMain(gcnew Action<AutoDL::Data::Download^>(SendDownloadInfo), SERVICE_EXTENSION);
 }
 
+/// <summary>
+/// DLL exit-point.
+/// </summary>
+/// <remarks>
+/// Called by mIRC automatically when DLL is unloaded.
+/// </remarks>
 int __stdcall UnloadDll(int timeout)
 {
 	//if Dll is simply idle for 10 minutes
@@ -77,11 +105,18 @@ int __stdcall UnloadDll(int timeout)
 	return 1;
 }
 
+/// <summary>
+/// Just a pointless call to allow DLL to be loaded and setup
+/// since mIRC doesn't have an explicit DLL "load" call.
+/// </summary>
 mIRCFunc(AutoDL_Start)
 {
 	return 1;
 }
 
+/// <summary>
+/// Passes status of current download from mIRC to the service.
+/// </summary>
 mIRCFunc(DownloadStatus)
 {
 	String^ mdata;

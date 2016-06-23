@@ -1,7 +1,4 @@
-﻿/*
- * TO-DO: Comments.
- * Update NextDownload(bool)
- */
+﻿//The classes which handle configuration file actions.
 
 using System;
 using System.Collections.Specialized;
@@ -10,8 +7,15 @@ using System.Configuration;
 
 namespace AutoDL
 {
+    /// <summary>
+    /// Base class for configuration file classes.
+    /// </summary>
     internal abstract class CustomConfigManager
     {
+        /// <summary>
+        /// Constructor.
+        /// </summary>
+        /// <param name="filePath">Path to the configuration file.</param>
         public CustomConfigManager(string filePath)
         {
             SettingsPath = filePath;
@@ -20,12 +24,23 @@ namespace AutoDL
 
         //Methods
         protected abstract void CheckForValidFile();
+
+        /// <summary>
+        /// Opens the configuration file with <c>ConfigurationUserLevel.None</c> and <c>preload=false</c>.
+        /// </summary>
+        /// <returns><see cref="Configuration"/> object.</returns>
         protected Configuration OpenConfigFile()
         {
             ExeConfigurationFileMap configFile = new ExeConfigurationFileMap() { ExeConfigFilename = SettingsPath };
             Configuration config = ConfigurationManager.OpenMappedExeConfiguration(configFile, ConfigurationUserLevel.None, false);
             return config;
         }
+
+        /// <summary>
+        /// Saves the configuration file with <c>ConfigurationSaveMode.Modified</c> option.
+        /// </summary>
+        /// <param name="config"><see cref="Configuration"/> object.</param>
+        /// <param name="section">Optional section to be refreshed after save.</param>
         protected void SaveFile(Configuration config, string section = null)
         {
             config.Save(ConfigurationSaveMode.Modified);
@@ -39,11 +54,19 @@ namespace AutoDL
         private readonly string SettingsPath;
     }
 
+    /// <summary>
+    /// Configuration file class for settings.
+    /// </summary>
     internal class SettingsConfig : CustomConfigManager
     {
         public SettingsConfig(string filePath) : base(filePath) { }
 
         //Methods
+
+        /// <summary>
+        /// Ensures valid settings in the configuration file.
+        /// Invalid settings are removed.
+        /// </summary>
         protected override void CheckForValidFile()
         {
             Configuration config = OpenConfigFile();
@@ -58,6 +81,7 @@ namespace AutoDL
 
             SaveFile(config, "appSettings");
         }
+
         public void Save(Data.SettingsData newSettings)
         {
             Configuration config = OpenConfigFile();
@@ -82,6 +106,7 @@ namespace AutoDL
 
             base.SaveFile(config, "appSettings");
         }
+
         public Dictionary<string, string> Load(Data.SettingsData settings)
         {
             Dictionary<string, string> loadedSettings = new Dictionary<string, string>();
@@ -98,10 +123,18 @@ namespace AutoDL
         }
     }
 
+    /// <summary>
+    /// Configuration file class for aliases.
+    /// </summary>
     internal class AliasConfig : CustomConfigManager
     {
         public AliasConfig(string filePath) : base(filePath) { }
 
+        //Methods
+
+        /// <summary>
+        /// Ensures valid <c>AliasSection</c> exists.  If not, creates it.
+        /// </summary>
         protected override void CheckForValidFile()
         {
             Configuration config = OpenConfigFile();
@@ -112,6 +145,7 @@ namespace AutoDL
                 SaveFile(config);
             }
         }
+
         public void Save(Data.AliasData aliases)
         {
             Configuration config = OpenConfigFile();
@@ -129,6 +163,7 @@ namespace AutoDL
 
             base.SaveFile(config, AliasSection.SECTION_NAME);
         }
+
         public Dictionary<string, string> Load(Data.AliasData data)
         {
             Configuration config = OpenConfigFile();
@@ -141,6 +176,7 @@ namespace AutoDL
             }
             return loaded;
         }
+
         public void ClearSaved()
         {
             Configuration config = OpenConfigFile();
@@ -150,10 +186,18 @@ namespace AutoDL
         }
     }
 
+    /// <summary>
+    /// Configuration file class for the queue/downloads.
+    /// </summary>
     internal class QueueConfig : CustomConfigManager
     {
         public QueueConfig(string filePath) : base(filePath) { }
 
+        //Methods
+
+        /// <summary>
+        /// Ensures valid <c>DLQueueSection</c> exists.  If not, creates it.
+        /// </summary>
         protected override void CheckForValidFile()
         {
             Configuration config = OpenConfigFile();
@@ -164,6 +208,7 @@ namespace AutoDL
                 SaveFile(config);
             }
         }
+
         public void Save(Data.DownloadData queue)
         {
             Data.Download nextItem = queue.NextDownload(false);
@@ -194,6 +239,7 @@ namespace AutoDL
                 base.SaveFile(config, DLQueueSection.SECTION_NAME);
             }
         }
+
         public OrderedDictionary Load(Data.DownloadData queue)
         {
             Configuration config = OpenConfigFile();
@@ -217,6 +263,7 @@ namespace AutoDL
             SaveFile(config, DLQueueSection.SECTION_NAME);
             return loaded;
         }
+
         public void ClearSaved()
         {
             Configuration config = OpenConfigFile();

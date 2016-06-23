@@ -1,8 +1,14 @@
-﻿using System;
+﻿//The classes which govern how downloads are saved to the
+//configuration file.
+
+using System;
 using System.Configuration;
 
 namespace AutoDL
 {
+    /// <summary>
+    /// Represents the download queue section in the configuration file.
+    /// </summary>
     public class DLQueueSection : ConfigurationSection
     {
         public static string SECTION_NAME = "DLQueue";
@@ -17,6 +23,10 @@ namespace AutoDL
         }
     }
 
+    /// <summary>
+    /// Represents the collection within the <c>DLQueueSection</c> of
+    /// bots and packets.
+    /// </summary>
     [ConfigurationCollection(typeof(DLQueueItemElement), AddItemName="queueItem")]
     public class DLQueueCollection : ConfigurationElementCollection
     {      
@@ -77,6 +87,9 @@ namespace AutoDL
         }
     }
 
+    /// <summary>
+    /// Represents a bot and its associated packet(s).
+    /// </summary>
     public class DLQueueItemElement : ConfigurationElement
     {
         [ConfigurationProperty("botName", IsRequired=true, IsKey=true)]
@@ -103,6 +116,9 @@ namespace AutoDL
         }
     }
 
+    /// <summary>
+    /// Represents a collection of packets.
+    /// </summary>
     [ConfigurationCollection(typeof(PacketElement), AddItemName="packet")]
     public class PacketCollection : ConfigurationElementCollection
     {
@@ -167,6 +183,9 @@ namespace AutoDL
         }
     }
 
+    /// <summary>
+    /// Represents a single packet.
+    /// </summary>
     public class PacketElement : ConfigurationElement
     {
         [ConfigurationProperty("packet", IsRequired=true)]

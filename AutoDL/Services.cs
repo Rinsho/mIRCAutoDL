@@ -1,4 +1,6 @@
-﻿using System;
+﻿//The WCF Service class.
+
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Threading;
@@ -6,16 +8,23 @@ using System.ServiceModel;
 
 namespace AutoDL.Services
 {
+    /// <summary>
+    /// Implements the <c>ServiceContracts</c> interfaces.
+    /// </summary>
     [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Single, InstanceContextMode = InstanceContextMode.Single)]
     internal partial class ServiceManager : ServiceContracts.ISettings
     {
-        //Constructor
+        /// <summary>
+        /// Constructor function for Settings-related variables.
+        /// </summary>
+        /// <param name="filePath">Path to the configuration file.</param>
         private void SettingsConstructor(string filePath)
         {
             Settings = new Data.SettingsData(filePath);
         }
 
         //Service Methods
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when an invalid setting or value is encountered.</exception>
         void ServiceContracts.ISettings.Update(string setting, string value)
         {
             try
@@ -32,6 +41,8 @@ namespace AutoDL.Services
                 throw new FaultException<ServiceContracts.InvalidSettingFault>(fault);
             }
         }
+
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when an invalid setting is encountered.</exception>
         void ServiceContracts.ISettings.Default(string setting)
         {
             try
@@ -48,10 +59,13 @@ namespace AutoDL.Services
                 throw new FaultException<ServiceContracts.InvalidSettingFault>(fault);
             }
         }
+
         void ServiceContracts.ISettings.DefaultAll()
         {
             Settings.DefaultAll();
         }
+
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when unable to access the configuration file.</exception>
         void ServiceContracts.ISettings.Save()
         {
             try
@@ -68,6 +82,8 @@ namespace AutoDL.Services
                 throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
             }
         }
+
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when unable to access the configuration file.</exception>
         Dictionary<string, string> ServiceContracts.ISettings.Load()
         {
             try
@@ -91,6 +107,10 @@ namespace AutoDL.Services
 
     internal partial class ServiceManager : ServiceContracts.IAlias
     {
+        /// <summary>
+        /// Constructor function for Alias-related variables.
+        /// </summary>
+        /// <param name="filePath">Path to the configuration file.</param>
         private void AliasConstructor(string filePath)
         {
             Aliases = new Data.AliasData(filePath);
@@ -101,14 +121,18 @@ namespace AutoDL.Services
         {
             Aliases.Add(alias, name);
         }
+
         void ServiceContracts.IAlias.Remove(string alias)
         {
             Aliases.Remove(alias);
         }
+
         void ServiceContracts.IAlias.Clear()
         {
             Aliases.Clear();
         }
+
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when unable to access the configuration file.</exception>
         void ServiceContracts.IAlias.Save()
         {
             try
@@ -125,6 +149,8 @@ namespace AutoDL.Services
                 throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
             }
         }
+
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when unable to access the configuration file.</exception>
         Dictionary<string, string> ServiceContracts.IAlias.Load()
         {
             try
@@ -141,6 +167,8 @@ namespace AutoDL.Services
                 throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
             }
         }
+
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when unable to access the configuration file.</exception>
         void ServiceContracts.IAlias.ClearSaved()
         {
             try
@@ -164,6 +192,11 @@ namespace AutoDL.Services
 
     internal partial class ServiceManager : ServiceContracts.IDownload
     {
+        /// <summary>
+        /// Constructor for the ServiceManager class.
+        /// </summary>
+        /// <param name="filePath">Path to the configuration file.</param>
+        /// <param name="wrapperCallback">Callback to send download information to the IRC client wrapper.</param>
         internal ServiceManager(string filePath, Action<Data.Download> wrapperCallback)
         {
             this.WrapperCallback = wrapperCallback;
@@ -174,6 +207,10 @@ namespace AutoDL.Services
         }
 
         //Service Methods
+        /// <summary>
+        /// Adds bot and packet(s) to the queue.  If not currently downloading, calls <c>StartDownload()</c>.
+        /// </summary>
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when there are invalid packets.</exception>
         void ServiceContracts.IDownload.Add(string name, List<int> packets)
         {
             try
@@ -201,6 +238,7 @@ namespace AutoDL.Services
                 throw new FaultException<ServiceContracts.InvalidPacketFault>(fault);
             }
         }
+
         void ServiceContracts.IDownload.Remove(string name, List<int> packets)
         {
             foreach (string alias in Aliases)
@@ -212,6 +250,7 @@ namespace AutoDL.Services
             }
             Downloads.Remove(name, packets);
         }
+
         void ServiceContracts.IDownload.Remove(string name)
         {
             foreach (string alias in Aliases)
@@ -223,10 +262,13 @@ namespace AutoDL.Services
             }
             Downloads.Remove(name);
         }
+
         void ServiceContracts.IDownload.Clear()
         {
             Downloads.Clear();
         }
+
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when unable to access the configuration file.</exception>
         void ServiceContracts.IDownload.Save()
         {
             try
@@ -243,6 +285,8 @@ namespace AutoDL.Services
                 throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
             }
         }
+
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when unable to access the configuration file.</exception>
         OrderedDictionary ServiceContracts.IDownload.Load()
         {
             try
@@ -259,6 +303,8 @@ namespace AutoDL.Services
                 throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
             }
         }
+
+        /// <exception cref="System.ServiceModel.FaultException{T}">Throws when unable to access the configuration file.</exception>
         void ServiceContracts.IDownload.ClearSaved()
         {
             try
@@ -277,6 +323,9 @@ namespace AutoDL.Services
         }
 
         //Methods
+        /// <summary>
+        /// Calls the wrapper callback to start downloading and the client callback to update the GUI.
+        /// </summary>
         public void StartDownload()
         {
             Downloads.IsDownloading = true;
@@ -284,6 +333,11 @@ namespace AutoDL.Services
             WrapperCallback(download);
             ClientCallback.Downloading(download.Name, download.Packet);
         }
+
+        /// <summary>
+        /// Used to request the next download while updating status of previous download.
+        /// </summary>
+        /// <param name="success">Indicates whether the previous download completed.</param>
         public void SendDownload(bool success)
         {
             bool retry = (!success && Convert.ToBoolean(Settings[Data.SettingsData.RETRY]));

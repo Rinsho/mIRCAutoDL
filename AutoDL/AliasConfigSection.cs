@@ -1,8 +1,14 @@
-﻿using System;
+﻿//The classes that govern how aliases are saved to the
+//configuration file.
+
+using System;
 using System.Configuration;
 
 namespace AutoDL
 {
+    /// <summary>
+    /// Represents the alias section in the configuration file.
+    /// </summary>
     public class AliasSection : ConfigurationSection
     {
         public static string SECTION_NAME = "Aliases";
@@ -17,6 +23,10 @@ namespace AutoDL
         }
     }
 
+    /// <summary>
+    /// Represents the collection within the <c>AliasSection</c> of
+    /// aliases and names.
+    /// </summary>
     [ConfigurationCollection(typeof(AliasElement))]
     public class AliasCollection : ConfigurationElementCollection
     {
@@ -86,6 +96,9 @@ namespace AutoDL
 
     }
 
+    /// <summary>
+    /// Represents an alias and its associated name.
+    /// </summary>
     public class AliasElement : ConfigurationElement
     {
         [ConfigurationProperty("name", IsRequired=true)]

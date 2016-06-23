@@ -12,7 +12,7 @@ using namespace System::Security::Permissions;
 // associated with an assembly.
 //
 [assembly:AssemblyTitleAttribute(L"mIRCClient")];
-[assembly:AssemblyDescriptionAttribute(L"")];
+[assembly:AssemblyDescriptionAttribute(L"Service client for mIRC.")];
 [assembly:AssemblyConfigurationAttribute(L"")];
 [assembly:AssemblyCompanyAttribute(L"")];
 [assembly:AssemblyProductAttribute(L"mIRCClient")];
