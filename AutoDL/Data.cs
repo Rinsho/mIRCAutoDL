@@ -5,6 +5,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
+using AutoDL.FileConfiguration;
 
 namespace AutoDL.Data
 {
@@ -22,7 +24,9 @@ namespace AutoDL.Data
         /// <param name="filePath">Path to the configuration file.</param>
         public SettingsData(string filePath)
         {
-            Data = new Dictionary<string, string>();
+            Data = new Dictionary<string, string>() 
+            { { SettingsData.RETRY, null }, { SettingsData.DELAY, null } };
+            this.DefaultAll();
             this.FilePath = filePath;
         }
 
@@ -166,11 +170,18 @@ namespace AutoDL.Data
         /// Indexer
         /// </summary>
         /// <returns>Associated name.</returns>
-        internal string this[string alias]
+        public string this[string alias]
         {
             get
             {
-                return Data[alias];
+                if (!String.IsNullOrEmpty(alias) && Data.ContainsKey(alias))
+                {
+                    return Data[alias];
+                }
+                else
+                {
+                    return default(string);
+                }
             }
 
             set
@@ -348,7 +359,8 @@ namespace AutoDL.Data
             }
 
             Download nextDownload = new Download();
-            DictionaryEntry entry = (DictionaryEntry)Data[0];
+            IEnumerable<DictionaryEntry> RawData = Data.Cast<DictionaryEntry>();
+            DictionaryEntry entry = RawData.ElementAt(0);
             string name = entry.Key as string;
             List<int> packets = entry.Value as List<int>;
 
@@ -374,7 +386,7 @@ namespace AutoDL.Data
                         Data.Remove(name);
                         if (Data.Count > 0)
                         {
-                            entry = (DictionaryEntry)Data[0];
+                            entry = RawData.ElementAt(0);
                             name = entry.Key as string;
                             packets = entry.Value as List<int>;
                         }
@@ -416,7 +428,7 @@ namespace AutoDL.Data
     /// <summary>
     /// Represents an invalid download request (i.e. a request when no downloads exist)
     /// </summary>
-    internal class InvalidDownloadException : Exception 
+    public class InvalidDownloadException : Exception 
     {
         public InvalidDownloadException() : base() { }
     }
@@ -424,7 +436,7 @@ namespace AutoDL.Data
     /// <summary>
     /// Represents an invalid packet list
     /// </summary>
-    internal class InvalidPacketException : Exception
+    public class InvalidPacketException : Exception
     {
         public InvalidPacketException(string name, string message) : base(message)
         {

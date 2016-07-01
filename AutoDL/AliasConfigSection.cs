@@ -4,12 +4,12 @@
 using System;
 using System.Configuration;
 
-namespace AutoDL
+namespace AutoDL.FileConfiguration
 {
     /// <summary>
     /// Represents the alias section in the configuration file.
     /// </summary>
-    public class AliasSection : ConfigurationSection
+    internal class AliasSection : ConfigurationSection
     {
         public static string SECTION_NAME = "Aliases";
 
@@ -28,7 +28,7 @@ namespace AutoDL
     /// aliases and names.
     /// </summary>
     [ConfigurationCollection(typeof(AliasElement))]
-    public class AliasCollection : ConfigurationElementCollection
+    internal class AliasCollection : ConfigurationElementCollection
     {
         public new AliasElement this[string alias]
         {
@@ -99,7 +99,7 @@ namespace AutoDL
     /// <summary>
     /// Represents an alias and its associated name.
     /// </summary>
-    public class AliasElement : ConfigurationElement
+    internal class AliasElement : ConfigurationElement
     {
         [ConfigurationProperty("name", IsRequired=true)]
         public string Name

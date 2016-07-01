@@ -4,12 +4,12 @@
 using System;
 using System.Configuration;
 
-namespace AutoDL
+namespace AutoDL.FileConfiguration
 {
     /// <summary>
     /// Represents the download queue section in the configuration file.
     /// </summary>
-    public class DLQueueSection : ConfigurationSection
+    internal class DLQueueSection : ConfigurationSection
     {
         public static string SECTION_NAME = "DLQueue";
 
@@ -28,7 +28,7 @@ namespace AutoDL
     /// bots and packets.
     /// </summary>
     [ConfigurationCollection(typeof(DLQueueItemElement), AddItemName="queueItem")]
-    public class DLQueueCollection : ConfigurationElementCollection
+    internal class DLQueueCollection : ConfigurationElementCollection
     {      
         public void Add(DLQueueItemElement item)
         {
@@ -90,7 +90,7 @@ namespace AutoDL
     /// <summary>
     /// Represents a bot and its associated packet(s).
     /// </summary>
-    public class DLQueueItemElement : ConfigurationElement
+    internal class DLQueueItemElement : ConfigurationElement
     {
         [ConfigurationProperty("botName", IsRequired=true, IsKey=true)]
         public string BotName
@@ -120,7 +120,7 @@ namespace AutoDL
     /// Represents a collection of packets.
     /// </summary>
     [ConfigurationCollection(typeof(PacketElement), AddItemName="packet")]
-    public class PacketCollection : ConfigurationElementCollection
+    internal class PacketCollection : ConfigurationElementCollection
     {
         public PacketElement this[int index]
         {
@@ -186,7 +186,7 @@ namespace AutoDL
     /// <summary>
     /// Represents a single packet.
     /// </summary>
-    public class PacketElement : ConfigurationElement
+    internal class PacketElement : ConfigurationElement
     {
         [ConfigurationProperty("packet", IsRequired=true)]
         [IntegerValidator(MinValue=0)]

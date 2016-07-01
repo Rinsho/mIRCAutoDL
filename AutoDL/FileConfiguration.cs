@@ -5,7 +5,7 @@ using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.Configuration;
 
-namespace AutoDL
+namespace AutoDL.FileConfiguration
 {
     /// <summary>
     /// Base class for configuration file classes.

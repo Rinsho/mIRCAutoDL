@@ -197,7 +197,7 @@ namespace AutoDL.Services
         /// </summary>
         /// <param name="filePath">Path to the configuration file.</param>
         /// <param name="wrapperCallback">Callback to send download information to the IRC client wrapper.</param>
-        internal ServiceManager(string filePath, Action<Data.Download> wrapperCallback)
+        public ServiceManager(string filePath, Action<Data.Download> wrapperCallback)
         {
             this.WrapperCallback = wrapperCallback;
             ClientCallback = OperationContext.Current.GetCallbackChannel<ServiceContracts.IDownloadCallback>();
