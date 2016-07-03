@@ -21,6 +21,7 @@
 #pragma comment(linker, "/EXPORT:Download_Save=_Download_Save@24")
 #pragma comment(linker, "/EXPORT:Download_Load=_Download_Load@24")
 #pragma comment(linker, "/EXPORT:Download_ClearSaved=_Download_ClearSaved@24")
+#pragma comment(linker, "/EXPORT:Download_StartDownload=_Download_StartDownload@24")
 
 using namespace System;
 using namespace System::Collections::Generic;
@@ -65,4 +66,5 @@ extern "C"
 	mIRCFunc(Download_Save);
 	mIRCFunc(Download_Load);
 	mIRCFunc(Download_ClearSaved);
+	mIRCFunc(Download_StartDownload);
 }

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Threading;
 using System.ServiceModel;
+using AutoDL.FileConfiguration;
 
 namespace AutoDL.Services
 {
@@ -18,9 +19,9 @@ namespace AutoDL.Services
         /// Constructor function for Settings-related variables.
         /// </summary>
         /// <param name="filePath">Path to the configuration file.</param>
-        private void SettingsConstructor(string filePath)
+        private void SettingsConstructor()
         {
-            Settings = new Data.SettingsData(filePath);
+            Settings = new Data.SettingsData();
         }
 
         //Service Methods
@@ -70,7 +71,7 @@ namespace AutoDL.Services
         {
             try
             {
-                Settings.Save();
+                Settings.Accept(new SaveDataVisitor(FilePath));
             }
             catch (System.Configuration.ConfigurationErrorsException ex)
             {
@@ -88,7 +89,8 @@ namespace AutoDL.Services
         {
             try
             {
-                return Settings.Load();
+                Settings.Accept(new LoadDataVisitor(FilePath));
+                return Settings.GetData();
             }
             catch (System.Configuration.ConfigurationErrorsException ex)
             {
@@ -103,6 +105,7 @@ namespace AutoDL.Services
 
         //Members
         private Data.SettingsData Settings;
+        private string FilePath;
     }
 
     internal partial class ServiceManager : ServiceContracts.IAlias
@@ -111,9 +114,9 @@ namespace AutoDL.Services
         /// Constructor function for Alias-related variables.
         /// </summary>
         /// <param name="filePath">Path to the configuration file.</param>
-        private void AliasConstructor(string filePath)
+        private void AliasConstructor()
         {
-            Aliases = new Data.AliasData(filePath);
+            Aliases = new Data.AliasData();
         }
 
         //Service Methods
@@ -137,7 +140,7 @@ namespace AutoDL.Services
         {
             try
             {
-                Aliases.Save();
+                Aliases.Accept(new SaveDataVisitor(FilePath));
             }
             catch (System.Configuration.ConfigurationErrorsException ex)
             {
@@ -155,7 +158,8 @@ namespace AutoDL.Services
         {
             try
             {
-                return Aliases.Load();
+                Aliases.Accept(new LoadDataVisitor(FilePath));
+                return Aliases.GetData();
             }
             catch (System.Configuration.ConfigurationErrorsException ex)
             {
@@ -173,7 +177,7 @@ namespace AutoDL.Services
         {
             try
             {
-                Aliases.ClearSaved();
+                Aliases.Accept(new ClearSavedDataVisitor(FilePath));
             }
             catch (System.Configuration.ConfigurationErrorsException ex)
             {
@@ -201,9 +205,9 @@ namespace AutoDL.Services
         {
             this.WrapperCallback = wrapperCallback;
             ClientCallback = OperationContext.Current.GetCallbackChannel<ServiceContracts.IDownloadCallback>();
-            Downloads = new Data.DownloadData(filePath);
-            SettingsConstructor(filePath);
-            AliasConstructor(filePath);
+            Downloads = new Data.DownloadData();
+            SettingsConstructor();
+            AliasConstructor();
         }
 
         //Service Methods
@@ -223,10 +227,6 @@ namespace AutoDL.Services
                     }
                 }
                 Downloads.Add(name, packets);
-                if (Downloads.IsDownloading == false)
-                {
-                    this.StartDownload();
-                }
             }
             catch (Data.InvalidPacketException ex)
             {
@@ -273,7 +273,7 @@ namespace AutoDL.Services
         {
             try
             {
-                Downloads.Save();
+                Downloads.Accept(new SaveDataVisitor(FilePath));
             }
             catch (System.Configuration.ConfigurationErrorsException ex)
             {
@@ -291,7 +291,8 @@ namespace AutoDL.Services
         {
             try
             {
-                return Downloads.Load();
+                Downloads.Accept(new LoadDataVisitor(FilePath));
+                return Downloads.GetData();
             }
             catch (System.Configuration.ConfigurationErrorsException ex)
             {
@@ -309,7 +310,7 @@ namespace AutoDL.Services
         {
             try
             {
-                Downloads.ClearSaved();
+                Downloads.Accept(new ClearSavedDataVisitor(FilePath));
             }
             catch (System.Configuration.ConfigurationErrorsException ex)
             {
@@ -321,19 +322,22 @@ namespace AutoDL.Services
                 throw new FaultException<ServiceContracts.ConfigurationFault>(fault);
             }
         }
-
-        //Methods
+        
         /// <summary>
         /// Calls the wrapper callback to start downloading and the client callback to update the GUI.
         /// </summary>
-        public void StartDownload()
+        void ServiceContracts.IDownload.StartDownload()
         {
-            Downloads.IsDownloading = true;
-            Data.Download download = Downloads.NextDownload(true);
-            WrapperCallback(download);
-            ClientCallback.Downloading(download.Name, download.Packet);
+            if (Downloads.IsDownloading == false)
+            {
+                Downloads.IsDownloading = true;
+                Data.Download download = Downloads.NextDownload(true);
+                WrapperCallback(download);
+                ClientCallback.Downloading(download.Name, download.Packet);
+            }
         }
 
+        //Methods
         /// <summary>
         /// Used to request the next download while updating status of previous download.
         /// </summary>
@@ -342,37 +346,41 @@ namespace AutoDL.Services
         {
             bool retry = (!success && Convert.ToBoolean(Settings[Data.SettingsData.RETRY]));
             int downloadDelay = Convert.ToInt32(Settings[Data.SettingsData.DELAY]);
-            if (success)
+            Data.Download download = Downloads.NextDownload(retry);
+
+            if (download.Name == "")
             {
-                ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.Success);
-            }
-            else if (retry)
-            {
-                ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.Retry);
+                ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.QueueComplete);
             }
             else
             {
-                ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.Fail);
-            }
+                if (success)
+                {
+                    ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.Success);
+                }
+                else if (retry)
+                {
+                    ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.Retry);
+                }
+                else
+                {
+                    ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.Fail);
+                }
 
-            Timer DelayTimer = new Timer(new TimerCallback(x =>
-            {
-                try
-                {             
-                    Data.Download download = Downloads.NextDownload(retry);
-                    WrapperCallback(download);
-                    ClientCallback.Downloading(download.Name, download.Packet);
-                }
-                catch (Data.InvalidDownloadException)
+                Timer DelayTimer = new Timer(new TimerCallback(x =>
                 {
-                    ClientCallback.DownloadStatusUpdate(ServiceContracts.DownloadStatus.QueueComplete);
-                }
-                finally
-                {
-                    (x as Timer).Dispose();
-                }
-            }));
-            DelayTimer.Change(downloadDelay * 1000, Timeout.Infinite);
+                    try
+                    {
+                        WrapperCallback(download);
+                        ClientCallback.Downloading(download.Name, download.Packet);
+                    }
+                    finally
+                    {
+                        (x as Timer).Dispose();
+                    }
+                }));
+                DelayTimer.Change(downloadDelay * 1000, Timeout.Infinite);
+            }
         }
 
         //Members

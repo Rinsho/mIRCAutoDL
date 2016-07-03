@@ -11,51 +11,54 @@ using AutoDL.FileConfiguration;
 namespace AutoDL.Data
 {
     /// <summary>
+    /// Interface for use with data-persisting (save/load/etc) visitor
+    /// </summary>
+    internal interface IPersistData
+    {
+        void Accept(IVisitAndPersistData stateHandler);
+    }
+
+    /// <summary>
     /// Handles data and actions related to download settings.
     /// </summary>
     /// <remarks>
     /// Implements <see cref="IEnumerable{T}"/>
     /// </remarks>
-    internal class SettingsData : IEnumerable<string>
+    internal class SettingsData : IPersistData, IEnumerable<string>
     {
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="filePath">Path to the configuration file.</param>
-        public SettingsData(string filePath)
+        public SettingsData()
         {
-            Data = new Dictionary<string, string>() 
-            { { SettingsData.RETRY, null }, { SettingsData.DELAY, null } };
+            Data = new Dictionary<string, string>() { { SettingsData.RETRY, null }, { SettingsData.DELAY, null } };
             this.DefaultAll();
-            this.FilePath = filePath;
         }
 
         /// <summary>
         /// Indexer
         /// </summary>
         /// <returns>Setting's value.</returns>
-        internal string this[string setting]
+        public string this[string setting]
         {
             get
             {
-                return Data[setting];
+                if (!String.IsNullOrEmpty(setting))
+                {
+                    return Data[setting];
+                }
+                return default(string);
             }
 
-            set
+            private set
             {
                 switch (setting)
                 {
                     case RETRY:
                         if (value == "True" || value == "False")
                         {
-                            if (Data.ContainsKey(setting))
-                            {
-                                Data[setting] = value;
-                            }
-                            else
-                            {
-                                Data.Add(setting, value);
-                            }
+                            Data[setting] = value;
                         }
                         else
                         {
@@ -67,20 +70,15 @@ namespace AutoDL.Data
                         bool valid = Int32.TryParse(value, out val);
                         if (valid && val > 0)
                         {
-                            if (Data.ContainsKey(setting))
-                            {
-                                Data[setting] = value;                               
-                            }
-                            else
-                            {
-                                Data.Add(setting, value);
-                            }
+                            Data[setting] = value;
                         }
                         else
                         {
-                            throw new ArgumentException("Settings: Invalid DownloadDelay value (Int32 > 0)", value);
+                            throw new ArgumentException("Settings: Invalid DownloadDelay value (Integer > 0)", value);
                         }
                         break;
+                    default:
+                        throw new ArgumentException("Settings: Invalid Setting", setting);
                 }
             }
         }
@@ -90,10 +88,6 @@ namespace AutoDL.Data
         /// <exception cref="System.ArgumentException">Throws when <c>setting</c> or <c>value</c> are invalid.</exception>
         public void Update(string setting, string value)
         {
-            if (!Data.ContainsKey(setting))
-            {
-                throw new ArgumentException("Settings.Update(): Invalid Setting", setting);
-            }
             this[setting] = value;
         }
 
@@ -117,22 +111,24 @@ namespace AutoDL.Data
             this[RETRY] = "False";
             this[DELAY] = "5";
         }
-        public void Save()
+        public void Accept(IVisitAndPersistData stateHandler)
         {
-            SettingsConfig SettingsFile = new SettingsConfig(FilePath);
-            SettingsFile.Save(this);
+            stateHandler.Visit(this);
         }
-        public Dictionary<string, string> Load()
+        public Dictionary<string, string> GetData()
         {
-            SettingsConfig SettingsFile = new SettingsConfig(FilePath);
-            return SettingsFile.Load(this);
+            Dictionary<string, string> copy = new Dictionary<string, string>();
+            foreach (KeyValuePair<string, string> setting in Data)
+            {
+                copy.Add(String.Copy(setting.Key), String.Copy(setting.Value));
+            }
+            return copy;
         }
 
         //Members
         public const string RETRY = "RetryFailedDownload";
         public const string DELAY = "DownloadDelay";
         private Dictionary<string, string> Data;
-        private string FilePath;
 
         //IEnumberable Implementation
         public IEnumerator<string> GetEnumerator()
@@ -154,15 +150,14 @@ namespace AutoDL.Data
     /// <remarks>
     /// Implements <see cref="IEnumerable{T}"/>
     /// </remarks>
-    internal class AliasData : IEnumerable<string>
+    internal class AliasData : IPersistData, IEnumerable<string>
     {
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="filePath">Path to the configuration file.</param>
-        public AliasData(string filePath)
+        public AliasData()
         {
-            this.FilePath = filePath;
             Data = new Dictionary<string, string>();
         }
 
@@ -178,24 +173,14 @@ namespace AutoDL.Data
                 {
                     return Data[alias];
                 }
-                else
-                {
-                    return default(string);
-                }
+                return default(string);
             }
 
-            set
+            private set
             {
                 if (!String.IsNullOrEmpty(alias) && !String.IsNullOrEmpty(value))
                 {
-                    if (Data.ContainsKey(alias))
-                    {
-                        Data[alias] = value;
-                    }
-                    else
-                    {
-                        Data.Add(alias, value);
-                    }
+                    Data[alias] = value;
                 }
             }
         }
@@ -213,25 +198,22 @@ namespace AutoDL.Data
         {
             Data.Clear();
         }
-        public void Save()
+        public void Accept(IVisitAndPersistData stateHandler)
         {
-            AliasConfig AliasFile = new AliasConfig(FilePath);
-            AliasFile.Save(this);
+            stateHandler.Visit(this);
         }
-        public Dictionary<string, string> Load()
+        public Dictionary<string, string> GetData()
         {
-            AliasConfig AliasFile = new AliasConfig(FilePath);
-            return AliasFile.Load(this);
-        }
-        public void ClearSaved()
-        {
-            AliasConfig AliasFile = new AliasConfig(FilePath);
-            AliasFile.ClearSaved();
+            Dictionary<string, string> copy = new Dictionary<string, string>();
+            foreach (KeyValuePair<string, string> alias in Data)
+            {
+                copy.Add(String.Copy(alias.Key), String.Copy(alias.Value));
+            }
+            return copy;
         }
 
         //Members
         private Dictionary<string, string> Data;
-        private string FilePath;
 
         //IEnumberable Implementation
         public IEnumerator<string> GetEnumerator()
@@ -253,16 +235,15 @@ namespace AutoDL.Data
     /// <remarks>
     /// Implements <see cref="IEnumerable{T}"/>
     /// </remarks>
-    internal class DownloadData : IEnumerable<string>
+    internal class DownloadData : IPersistData, IEnumerable<string>
     {
         /// <summary>
         /// Constructor
         /// </summary>
         /// <param name="filePath">Path to the configuration file.</param>
-        public DownloadData(string filePath)
+        public DownloadData()
         {
             Data = new OrderedDictionary();
-            this.FilePath = filePath;
             IsDownloading = false;
         }
 
@@ -275,7 +256,7 @@ namespace AutoDL.Data
         {
             get
             {
-                if (Data.Contains(key))
+                if (!String.IsNullOrEmpty(key))
                 {
                     return Data[key] as List<int>;
                 }
@@ -333,34 +314,37 @@ namespace AutoDL.Data
         {
             Data.Clear();
         }
-        public void Save()
+        public void Accept(IVisitAndPersistData stateHandler)
         {
-            QueueConfig QueueFile = new QueueConfig(FilePath);
-            QueueFile.Save(this);
+            stateHandler.Visit(this);
         }
-        public OrderedDictionary Load()
+        public OrderedDictionary GetData()
         {
-            QueueConfig QueueFile = new QueueConfig(FilePath);
-            return QueueFile.Load(this);
-        }
-        public void ClearSaved()
-        {
-            QueueConfig QueueFile = new QueueConfig(FilePath);
-            QueueFile.ClearSaved();
+            OrderedDictionary copy = new OrderedDictionary();
+            foreach (DictionaryEntry entry in Data)
+            {
+                List<int> packets = new List<int>(entry.Value as List<int>);
+                copy.Add(String.Copy(entry.Key as string), packets);
+            }
+            return copy;
         }
 
-        /// <exception cref="InvalidDownloadException">Throws when queue is empty.</exception>
+        /// <summary>
+        /// Used to retrieve a download from the queue.
+        /// </summary>
+        /// <param name="retry">True to send current download again, false to send next.</param>
+        /// <returns>Returns valid <see cref="Download"/> or one with invalid values if no download exists.</returns>
         public Download NextDownload(bool retry)
         {
+            Download nextDownload = new Download() { Name = "", Packet = 0 };
+
             if (Data.Count == 0)
             {
                 IsDownloading = false;
-                throw new InvalidDownloadException();
+                return nextDownload;
             }
-
-            Download nextDownload = new Download();
-            IEnumerable<DictionaryEntry> RawData = Data.Cast<DictionaryEntry>();
-            DictionaryEntry entry = RawData.ElementAt(0);
+          
+            DictionaryEntry entry = Data.Cast<DictionaryEntry>().ElementAt(0);
             string name = entry.Key as string;
             List<int> packets = entry.Value as List<int>;
 
@@ -386,20 +370,19 @@ namespace AutoDL.Data
                         Data.Remove(name);
                         if (Data.Count > 0)
                         {
-                            entry = RawData.ElementAt(0);
+                            entry = Data.Cast<DictionaryEntry>().ElementAt(0);
                             name = entry.Key as string;
                             packets = entry.Value as List<int>;
                         }
                     }
                 }
                 IsDownloading = false;
-                throw new InvalidDownloadException();
+                return nextDownload;
             }     
         }
 
         //Members
         private OrderedDictionary Data;
-        private string FilePath;
         public bool IsDownloading;
 
         //IEnumberable Implementation
@@ -423,14 +406,6 @@ namespace AutoDL.Data
     {
         public string Name { get; set; }
         public int Packet { get; set; }
-    }
-
-    /// <summary>
-    /// Represents an invalid download request (i.e. a request when no downloads exist)
-    /// </summary>
-    public class InvalidDownloadException : Exception 
-    {
-        public InvalidDownloadException() : base() { }
     }
 
     /// <summary>

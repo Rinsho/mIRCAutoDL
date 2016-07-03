@@ -132,6 +132,10 @@ namespace AutoDL.ServiceClient
         {
             DownloadServiceCall((channel) => { channel.ClearSaved(); });
         }
+        public void StartDownload()
+        {
+            DownloadServiceCall((channel) => { channel.StartDownload(); });
+        }
         
         //Class Methods
 

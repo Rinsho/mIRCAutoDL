@@ -45,6 +45,10 @@ namespace AutoDL.ServiceContracts
         [OperationContract]
         [FaultContract(typeof(ConfigurationFault))]
         void ClearSaved();
+
+        //StartDownload: Starts the download queue.
+        [OperationContract(IsOneWay=true)]
+        void StartDownload();
     }
 
     /// <summary>

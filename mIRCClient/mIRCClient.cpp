@@ -482,4 +482,11 @@ mIRCFunc(Download_ClearSaved)
 	}
 	return 3;
 }
+
+mIRCFunc(Download_StartDownload)
+{
+	ClientCall(data, []() -> void { Host::DownloadClient->StartDownload(); });
+	SendOKMessage(data);
+	return 3;
+}
 #pragma endregion

@@ -8,22 +8,28 @@ using System.Configuration;
 namespace AutoDL.FileConfiguration
 {
     /// <summary>
-    /// Base class for configuration file classes.
+    /// Interface for data-persisting visitor
     /// </summary>
-    internal abstract class CustomConfigManager
+    internal interface IVisitAndPersistData
+    {
+        void Visit(Data.DownloadData data);
+        void Visit(Data.AliasData data);
+        void Visit(Data.SettingsData data);
+    }
+
+    /// <summary>
+    /// Base class for visitors which handle the configuration file.
+    /// </summary>
+    internal abstract class ConfigDataVisitor : IVisitAndPersistData
     {
         /// <summary>
         /// Constructor.
         /// </summary>
         /// <param name="filePath">Path to the configuration file.</param>
-        public CustomConfigManager(string filePath)
+        public ConfigDataVisitor(string filePath)
         {
-            SettingsPath = filePath;
-            CheckForValidFile();
+            FilePath = filePath;
         }
-
-        //Methods
-        protected abstract void CheckForValidFile();
 
         /// <summary>
         /// Opens the configuration file with <c>ConfigurationUserLevel.None</c> and <c>preload=false</c>.
@@ -31,7 +37,7 @@ namespace AutoDL.FileConfiguration
         /// <returns><see cref="Configuration"/> object.</returns>
         protected Configuration OpenConfigFile()
         {
-            ExeConfigurationFileMap configFile = new ExeConfigurationFileMap() { ExeConfigFilename = SettingsPath };
+            ExeConfigurationFileMap configFile = new ExeConfigurationFileMap() { ExeConfigFilename = FilePath };
             Configuration config = ConfigurationManager.OpenMappedExeConfiguration(configFile, ConfigurationUserLevel.None, false);
             return config;
         }
@@ -50,175 +56,49 @@ namespace AutoDL.FileConfiguration
             }
         }
 
-        //Members
-        private readonly string SettingsPath;
-    }
-
-    /// <summary>
-    /// Configuration file class for settings.
-    /// </summary>
-    internal class SettingsConfig : CustomConfigManager
-    {
-        public SettingsConfig(string filePath) : base(filePath) { }
-
-        //Methods
-
-        /// <summary>
-        /// Ensures valid settings in the configuration file.
-        /// Invalid settings are removed.
-        /// </summary>
-        protected override void CheckForValidFile()
+        protected void CheckForValidAliasSection(Configuration config)
         {
-            Configuration config = OpenConfigFile();
-            
-            foreach (string key in config.AppSettings.Settings.AllKeys)
-            {
-                if (String.IsNullOrEmpty(config.AppSettings.Settings[key].ToString()))
-                {
-                    config.AppSettings.Settings.Remove(key);
-                }
-            }
-
-            SaveFile(config, "appSettings");
-        }
-
-        public void Save(Data.SettingsData newSettings)
-        {
-            Configuration config = OpenConfigFile();
-
-            foreach (string setting in newSettings)
-            {
-                if (!String.IsNullOrEmpty(newSettings[setting]))
-                {
-                    foreach (string key in config.AppSettings.Settings.AllKeys)
-                    {
-                        if (setting == key)
-                        {
-                            config.AppSettings.Settings[setting].Value = newSettings[setting];
-                        }
-                        else
-                        {
-                            config.AppSettings.Settings.Add(setting, newSettings[setting]);
-                        }
-                    }
-                }
-            }
-
-            base.SaveFile(config, "appSettings");
-        }
-
-        public Dictionary<string, string> Load(Data.SettingsData settings)
-        {
-            Dictionary<string, string> loadedSettings = new Dictionary<string, string>();
-            Configuration config = OpenConfigFile();
-
-            string value;
-            foreach (string setting in config.AppSettings.Settings.AllKeys)
-            {
-                value = config.AppSettings.Settings[setting].Value;
-                loadedSettings.Add(setting, value);
-                settings.Update(setting, value);
-            }
-            return loadedSettings;
-        }
-    }
-
-    /// <summary>
-    /// Configuration file class for aliases.
-    /// </summary>
-    internal class AliasConfig : CustomConfigManager
-    {
-        public AliasConfig(string filePath) : base(filePath) { }
-
-        //Methods
-
-        /// <summary>
-        /// Ensures valid <c>AliasSection</c> exists.  If not, creates it.
-        /// </summary>
-        protected override void CheckForValidFile()
-        {
-            Configuration config = OpenConfigFile();
-
             if (config.Sections.Get(AliasSection.SECTION_NAME) == null)
             {
                 config.Sections.Add(AliasSection.SECTION_NAME, new AliasSection());
-                SaveFile(config);
+                SaveFile(config, AliasSection.SECTION_NAME);
             }
         }
-
-        public void Save(Data.AliasData aliases)
+        protected void CheckForValidDownloadSection(Configuration config)
         {
-            Configuration config = OpenConfigFile();
-            AliasSection aliasSection = config.GetSection(AliasSection.SECTION_NAME) as AliasSection;
-            AliasElement newAlias;
-
-            aliasSection.Aliases.Clear();
-            foreach (string alias in aliases)
-            {
-                newAlias = new AliasElement();
-                newAlias.Name = alias;
-                newAlias.Alias = aliases[alias];
-                aliasSection.Aliases.Add(newAlias);
-            }
-
-            base.SaveFile(config, AliasSection.SECTION_NAME);
-        }
-
-        public Dictionary<string, string> Load(Data.AliasData data)
-        {
-            Configuration config = OpenConfigFile();
-            AliasSection aliasSection = config.GetSection(AliasSection.SECTION_NAME) as AliasSection;
-            Dictionary<string, string> loaded = new Dictionary<string, string>();
-            foreach (AliasElement alias in aliasSection.Aliases)
-            {
-                loaded.Add(alias.Alias, alias.Name);
-                data.Add(alias.Alias, alias.Name);
-            }
-            return loaded;
-        }
-
-        public void ClearSaved()
-        {
-            Configuration config = OpenConfigFile();
-            AliasSection aliasSection = config.GetSection(AliasSection.SECTION_NAME) as AliasSection;
-            aliasSection.Aliases.Clear();
-            SaveFile(config, AliasSection.SECTION_NAME);
-        }
-    }
-
-    /// <summary>
-    /// Configuration file class for the queue/downloads.
-    /// </summary>
-    internal class QueueConfig : CustomConfigManager
-    {
-        public QueueConfig(string filePath) : base(filePath) { }
-
-        //Methods
-
-        /// <summary>
-        /// Ensures valid <c>DLQueueSection</c> exists.  If not, creates it.
-        /// </summary>
-        protected override void CheckForValidFile()
-        {
-            Configuration config = OpenConfigFile();
-
             if (config.Sections.Get(DLQueueSection.SECTION_NAME) == null)
             {
                 config.Sections.Add(DLQueueSection.SECTION_NAME, new DLQueueSection());
-                SaveFile(config);
+                SaveFile(config, DLQueueSection.SECTION_NAME);
             }
         }
 
-        public void Save(Data.DownloadData queue)
+        public abstract void Visit(Data.DownloadData data);
+        public abstract void Visit(Data.AliasData data);
+        public abstract void Visit(Data.SettingsData data);
+
+        //Members
+        protected string FilePath;
+    }
+
+    /// <summary>
+    /// Visitor that saves data to the configuration file.
+    /// </summary>
+    internal class SaveDataVisitor : ConfigDataVisitor
+    {
+        public SaveDataVisitor(string filePath) : base(filePath) { }
+
+        public override void Visit(Data.DownloadData data)
         {
-            Data.Download nextItem = queue.NextDownload(false);
-            if (nextItem.Name != null)
+            Data.Download nextItem = data.NextDownload(false);
+            if (nextItem.Name != "")
             {
                 Configuration config = OpenConfigFile();
+                CheckForValidDownloadSection(config);
                 DLQueueSection queueSection = config.GetSection(DLQueueSection.SECTION_NAME) as DLQueueSection;
                 DLQueueCollection queueCollection = queueSection.Queue;
 
-                while (nextItem.Name != null)
+                while (nextItem.Name != "")
                 {
                     DLQueueItemElement queueItem = new DLQueueItemElement();
                     PacketCollection packetsCollection = queueItem.PacketList;
@@ -229,23 +109,71 @@ namespace AutoDL.FileConfiguration
                         PacketElement packetItem = new PacketElement();
                         packetItem.Packet = nextItem.Packet;
                         packetsCollection.Add(packetItem);
-                        queue.Remove(nextItem.Name, nextItem.Packet);
-                        nextItem = queue.NextDownload(false);
+                        data.Remove(nextItem.Name, nextItem.Packet);
+                        nextItem = data.NextDownload(false);
                     } while (queueItem.BotName == nextItem.Name);
 
                     queueCollection.Add(queueItem);
                 }
-
-                base.SaveFile(config, DLQueueSection.SECTION_NAME);
+                SaveFile(config, DLQueueSection.SECTION_NAME);
             }
         }
 
-        public OrderedDictionary Load(Data.DownloadData queue)
+        public override void Visit(Data.AliasData data)
+        {
+            Configuration config = OpenConfigFile();
+            CheckForValidAliasSection(config);
+            AliasSection aliasSection = config.GetSection(AliasSection.SECTION_NAME) as AliasSection;
+            AliasElement newAlias;
+
+            aliasSection.Aliases.Clear();
+            foreach (string alias in data)
+            {
+                newAlias = new AliasElement();
+                newAlias.Name = alias;
+                newAlias.Alias = data[alias];
+                aliasSection.Aliases.Add(newAlias);
+            }
+            SaveFile(config, AliasSection.SECTION_NAME);
+        }
+
+        public override void Visit(Data.SettingsData data)
         {
             Configuration config = OpenConfigFile();
 
+            foreach (string setting in data)
+            {
+                if (!String.IsNullOrEmpty(data[setting]))
+                {
+                    foreach (string key in config.AppSettings.Settings.AllKeys)
+                    {
+                        if (setting == key)
+                        {
+                            config.AppSettings.Settings[setting].Value = data[setting];
+                        }
+                        else
+                        {
+                            config.AppSettings.Settings.Add(setting, data[setting]);
+                        }
+                    }
+                }
+            }
+            SaveFile(config, "appSettings");
+        }
+    }
+
+    /// <summary>
+    /// Visitor that loads data from the configuration file.
+    /// </summary>
+    internal class LoadDataVisitor : ConfigDataVisitor
+    {
+        public LoadDataVisitor(string filePath) : base(filePath) { }
+
+        public override void Visit(Data.DownloadData data)
+        {
+            Configuration config = OpenConfigFile();
+            CheckForValidDownloadSection(config);
             DLQueueSection queueSection = config.GetSection(DLQueueSection.SECTION_NAME) as DLQueueSection;
-            OrderedDictionary loaded = new OrderedDictionary();
 
             foreach (DLQueueItemElement queueItem in queueSection.Queue)
             {
@@ -254,22 +182,67 @@ namespace AutoDL.FileConfiguration
                 {
                     loadedPackets.Add(packet.Packet);
                 }
-
-                loaded.Add(queueItem.BotName, loadedPackets);
-                queue.Add(queueItem.BotName, loadedPackets);
+                data.Add(queueItem.BotName, loadedPackets);
             }
 
             queueSection.Queue.Clear();
             SaveFile(config, DLQueueSection.SECTION_NAME);
-            return loaded;
         }
 
-        public void ClearSaved()
+        public override void Visit(Data.AliasData data)
         {
             Configuration config = OpenConfigFile();
+            CheckForValidAliasSection(config);
+            AliasSection aliasSection = config.GetSection(AliasSection.SECTION_NAME) as AliasSection;
+
+            foreach (AliasElement alias in aliasSection.Aliases)
+            {
+                data.Add(alias.Alias, alias.Name);
+            }
+        }
+
+        public override void Visit(Data.SettingsData data)
+        {
+            Configuration config = OpenConfigFile();
+            string value;
+
+            foreach (string setting in config.AppSettings.Settings.AllKeys)
+            {
+                value = config.AppSettings.Settings[setting].Value;
+                data.Update(setting, value);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Visitor that clears saved data in the configuration file.
+    /// </summary>
+    internal class ClearSavedDataVisitor : ConfigDataVisitor
+    {
+        public ClearSavedDataVisitor(string filePath) : base(filePath) { }
+
+        public override void Visit(Data.DownloadData data)
+        {
+            Configuration config = OpenConfigFile();
+            CheckForValidDownloadSection(config);
             DLQueueSection queueSection = config.GetSection(DLQueueSection.SECTION_NAME) as DLQueueSection;
             queueSection.Queue.Clear();
             SaveFile(config, DLQueueSection.SECTION_NAME);
+        }
+
+        public override void Visit(Data.AliasData data)
+        {
+            Configuration config = OpenConfigFile();
+            CheckForValidAliasSection(config);
+            AliasSection aliasSection = config.GetSection(AliasSection.SECTION_NAME) as AliasSection;
+            aliasSection.Aliases.Clear();
+            SaveFile(config, AliasSection.SECTION_NAME);
+        }
+
+        public override void Visit(Data.SettingsData data)
+        {
+            data.DefaultAll();
+            data.Accept(new SaveDataVisitor(FilePath));
         }
     }
 }
