@@ -1,6 +1,10 @@
 ## mIRCAutoDL
 ##### AutoDL program for mIRC
 ---
+**Edit:**
+Sorry for the delay, I was sick the past couple days and weekend.  The alpha will be out this weekend
+regardless of the hours required!
+
 Used to manage a download queue for (currently only) mIRC with various quality-of-life improvements!
 The old version is available as the stable v1.0.0 release [here](https://github.com/Rinsho/mIRCAutoDL/releases).
 The new version will be in alpha soon™.  It is compilable, I just need to work on a couple more things!
