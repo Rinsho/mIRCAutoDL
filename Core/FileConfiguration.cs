@@ -5,6 +5,9 @@ using System.Collections.Specialized;
 using System.Collections.Generic;
 using System.Configuration;
 
+using AutoDL.Data;
+using AutoDL.ServiceContracts;
+
 namespace AutoDL.FileConfiguration
 {
     /// <summary>
@@ -12,9 +15,9 @@ namespace AutoDL.FileConfiguration
     /// </summary>
     internal interface IVisitAndPersistData
     {
-        void Visit(Data.DownloadData data);
-        void Visit(Data.AliasData data);
-        void Visit(Data.SettingsData data);
+        void Visit(IHandleDownloadData data);
+        void Visit(IHandleAliasData data);
+        void Visit(IHandleSettingsData data);
     }
 
     /// <summary>
@@ -28,7 +31,7 @@ namespace AutoDL.FileConfiguration
         /// <param name="filePath">Path to the configuration file.</param>
         public ConfigDataVisitor(string filePath)
         {
-            FilePath = filePath;
+            _filePath = filePath;
         }
 
         /// <summary>
@@ -37,7 +40,7 @@ namespace AutoDL.FileConfiguration
         /// <returns><see cref="Configuration"/> object.</returns>
         protected Configuration OpenConfigFile()
         {
-            ExeConfigurationFileMap configFile = new ExeConfigurationFileMap() { ExeConfigFilename = FilePath };
+            ExeConfigurationFileMap configFile = new ExeConfigurationFileMap() { ExeConfigFilename = _filePath };
             Configuration config = ConfigurationManager.OpenMappedExeConfiguration(configFile, ConfigurationUserLevel.None, false);
             return config;
         }
@@ -73,12 +76,12 @@ namespace AutoDL.FileConfiguration
             }
         }
 
-        public abstract void Visit(Data.DownloadData data);
-        public abstract void Visit(Data.AliasData data);
-        public abstract void Visit(Data.SettingsData data);
+        public abstract void Visit(IHandleDownloadData data);
+        public abstract void Visit(IHandleAliasData data);
+        public abstract void Visit(IHandleSettingsData data);
 
         //Members
-        protected string FilePath;
+        protected string _filePath;
     }
 
     /// <summary>
@@ -88,17 +91,17 @@ namespace AutoDL.FileConfiguration
     {
         public SaveDataVisitor(string filePath) : base(filePath) { }
 
-        public override void Visit(Data.DownloadData data)
+        public override void Visit(IHandleDownloadData data)
         {
-            Data.Download nextItem = data.NextDownload(false);
-            if (nextItem.Name != "")
+            Download nextItem = data.NextDownload(false);
+            if (nextItem != null)
             {
                 Configuration config = OpenConfigFile();
                 CheckForValidDownloadSection(config);
                 DLQueueSection queueSection = config.GetSection(DLQueueSection.SECTION_NAME) as DLQueueSection;
                 DLQueueCollection queueCollection = queueSection.Queue;
 
-                while (nextItem.Name != "")
+                while (nextItem != null)
                 {
                     DLQueueItemElement queueItem = new DLQueueItemElement();
                     PacketCollection packetsCollection = queueItem.PacketList;
@@ -109,7 +112,6 @@ namespace AutoDL.FileConfiguration
                         PacketElement packetItem = new PacketElement();
                         packetItem.Packet = nextItem.Packet;
                         packetsCollection.Add(packetItem);
-                        data.Remove(nextItem.Name, nextItem.Packet);
                         nextItem = data.NextDownload(false);
                     } while (queueItem.BotName == nextItem.Name);
 
@@ -119,7 +121,7 @@ namespace AutoDL.FileConfiguration
             }
         }
 
-        public override void Visit(Data.AliasData data)
+        public override void Visit(IHandleAliasData data)
         {
             Configuration config = OpenConfigFile();
             CheckForValidAliasSection(config);
@@ -127,34 +129,32 @@ namespace AutoDL.FileConfiguration
             AliasElement newAlias;
 
             aliasSection.Aliases.Clear();
-            foreach (string alias in data)
+            foreach (Alias alias in data.GetAllData())
             {
                 newAlias = new AliasElement();
-                newAlias.Name = alias;
-                newAlias.Alias = data[alias];
+                newAlias.Name = alias.Name;
+                newAlias.Alias = alias.AliasName;
                 aliasSection.Aliases.Add(newAlias);
             }
             SaveFile(config, AliasSection.SECTION_NAME);
         }
 
-        public override void Visit(Data.SettingsData data)
+        public override void Visit(IHandleSettingsData data)
         {
             Configuration config = OpenConfigFile();
 
-            foreach (string setting in data)
+            foreach (Setting setting in data.GetAllData())
             {
-                if (!String.IsNullOrEmpty(data[setting]))
+                string settingName = Enum.GetName(typeof(SettingName), setting.Name);
+                foreach (string key in config.AppSettings.Settings.AllKeys)
                 {
-                    foreach (string key in config.AppSettings.Settings.AllKeys)
+                    if (settingName == key)
                     {
-                        if (setting == key)
-                        {
-                            config.AppSettings.Settings[setting].Value = data[setting];
-                        }
-                        else
-                        {
-                            config.AppSettings.Settings.Add(setting, data[setting]);
-                        }
+                        config.AppSettings.Settings[settingName].Value = setting.Value as string;
+                    }
+                    else
+                    {
+                        config.AppSettings.Settings.Add(settingName, setting.Value as string);
                     }
                 }
             }
@@ -169,27 +169,26 @@ namespace AutoDL.FileConfiguration
     {
         public LoadDataVisitor(string filePath) : base(filePath) { }
 
-        public override void Visit(Data.DownloadData data)
+        public override void Visit(IHandleDownloadData data)
         {
             Configuration config = OpenConfigFile();
             CheckForValidDownloadSection(config);
             DLQueueSection queueSection = config.GetSection(DLQueueSection.SECTION_NAME) as DLQueueSection;
 
+            List<Download> loadedDownloads = new List<Download>();
             foreach (DLQueueItemElement queueItem in queueSection.Queue)
             {
-                List<int> loadedPackets = new List<int>();
                 foreach (PacketElement packet in queueItem.PacketList)
                 {
-                    loadedPackets.Add(packet.Packet);
+                    loadedDownloads.Add(new Download(queueItem.BotName, packet.Packet));
                 }
-                data.Add(queueItem.BotName, loadedPackets);
             }
-
             queueSection.Queue.Clear();
             SaveFile(config, DLQueueSection.SECTION_NAME);
+            data.Add(loadedDownloads);
         }
 
-        public override void Visit(Data.AliasData data)
+        public override void Visit(IHandleAliasData data)
         {
             Configuration config = OpenConfigFile();
             CheckForValidAliasSection(config);
@@ -197,19 +196,20 @@ namespace AutoDL.FileConfiguration
 
             foreach (AliasElement alias in aliasSection.Aliases)
             {
-                data.Add(alias.Alias, alias.Name);
+                data.Add(new Alias(alias.Alias, alias.Name));
             }
         }
 
-        public override void Visit(Data.SettingsData data)
+        public override void Visit(IHandleSettingsData data)
         {
             Configuration config = OpenConfigFile();
             string value;
 
             foreach (string setting in config.AppSettings.Settings.AllKeys)
             {
+                SettingName settingEnum = (SettingName) Enum.Parse(typeof(SettingName), setting, true);
                 value = config.AppSettings.Settings[setting].Value;
-                data.Update(setting, value);
+                data.Update(new Setting(settingEnum, value));
             }
         }
     }
@@ -221,7 +221,7 @@ namespace AutoDL.FileConfiguration
     {
         public ClearSavedDataVisitor(string filePath) : base(filePath) { }
 
-        public override void Visit(Data.DownloadData data)
+        public override void Visit(IHandleDownloadData data)
         {
             Configuration config = OpenConfigFile();
             CheckForValidDownloadSection(config);
@@ -230,7 +230,7 @@ namespace AutoDL.FileConfiguration
             SaveFile(config, DLQueueSection.SECTION_NAME);
         }
 
-        public override void Visit(Data.AliasData data)
+        public override void Visit(IHandleAliasData data)
         {
             Configuration config = OpenConfigFile();
             CheckForValidAliasSection(config);
@@ -239,10 +239,10 @@ namespace AutoDL.FileConfiguration
             SaveFile(config, AliasSection.SECTION_NAME);
         }
 
-        public override void Visit(Data.SettingsData data)
+        public override void Visit(IHandleSettingsData data)
         {
             data.DefaultAll();
-            data.Accept(new SaveDataVisitor(FilePath));
+            data.Accept(new SaveDataVisitor(_filePath));
         }
     }
 }

@@ -26,6 +26,8 @@
 using namespace System;
 using namespace System::Collections::Generic;
 using namespace AutoDL;
+using namespace AutoDL::ServiceContracts;
+using namespace AutoDL::ServiceClients;
 
 #define MIRC_BUFFER 4096
 #define MIRC_DATABUFFER 900
@@ -34,7 +36,6 @@ using namespace AutoDL;
 #define WM_MCOMMAND WM_USER + 200
 #define WM_MEVALUATE WM_USER + 201
 #define ITEM_SEPARATOR ','
-#define GROUP_SEPARATOR '#'
 #define SERVICE_EXTENSION "mIRC"
 #define mIRCFunc(x) int __stdcall x(HWND mWnd, HWND aWnd, char* data, char* params, bool show, bool nopause)
 

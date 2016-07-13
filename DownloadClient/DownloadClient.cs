@@ -3,9 +3,10 @@
 using System;
 using System.Collections.Generic;
 using System.ServiceModel;
+
 using AutoDL.ServiceContracts;
 
-namespace AutoDL.ServiceClient
+namespace AutoDL.ServiceClients
 {
     /// <summary>
     /// Base class for AutoDL service clients.
@@ -80,8 +81,8 @@ namespace AutoDL.ServiceClient
         public abstract void CloseClient();
 
         //Members
-        protected string EndpointBase = "net.pipe://localhost/AutoDL/";
-        protected static NetNamedPipeBinding Binding = new NetNamedPipeBinding();
+        protected string _endpointBase = "net.pipe://localhost/AutoDL/";
+        protected static NetNamedPipeBinding _binding = new NetNamedPipeBinding();
     }
 
     /// <summary>
@@ -94,26 +95,21 @@ namespace AutoDL.ServiceClient
         /// </summary>
         /// <param name="context">Context for the duplex binding (context that implements the callback contract).</param>
         /// <param name="serviceExtension">Service endpoint extension.</param>
-        public DownloadClient(InstanceContext context, string serviceExtension)
+        public DownloadClient(string serviceExtension)
         {
-            DownloadFactory = new DuplexChannelFactory<IDownload>(
-                context,
-                ClientBase.Binding,
-                new EndpointAddress(base.EndpointBase + serviceExtension + "/Download"));
+            _downloadFactory = new ChannelFactory<IDownload>(
+                ClientBase._binding,
+                new EndpointAddress(base._endpointBase + serviceExtension + "/Download"));
         }
 
         //Service Methods
-        public void Add(string name, List<int> packets)
+        public void Add(Download[] downloads)
         {
-            DownloadServiceCall((channel) => { channel.Add(name, packets); });
+            DownloadServiceCall((channel) => { channel.Add(downloads); });
         }
-        public void Remove(string name, List<int> packets)
+        public void Remove(Download[] downloads)
         {
-            DownloadServiceCall((channel) => { channel.Remove(name, packets); });
-        }
-        public void Remove(string name)
-        {
-            DownloadServiceCall((channel) => { channel.Remove(name); });
+            DownloadServiceCall((channel) => { channel.Remove(downloads); });
         }
         public void Clear()
         {
@@ -123,9 +119,9 @@ namespace AutoDL.ServiceClient
         {
             DownloadServiceCall((channel) => { channel.Save(); });
         }
-        public System.Collections.Specialized.OrderedDictionary Load()
+        public Download[] Load()
         {
-            return DownloadServiceCall<System.Collections.Specialized.OrderedDictionary>(
+            return DownloadServiceCall<Download[]>(
                 (channel) => { return channel.Load(); });
         }
         public void ClearSaved()
@@ -144,7 +140,7 @@ namespace AutoDL.ServiceClient
         /// </summary>
         public override void OpenClient()
         {
-            DownloadFactory.Open();
+            _downloadFactory.Open();
         }
 
         /// <summary>
@@ -152,7 +148,7 @@ namespace AutoDL.ServiceClient
         /// </summary>
         public override void CloseClient()
         {
-            DownloadFactory.Close();
+            _downloadFactory.Close();
         }
 
         /// <summary>
@@ -160,7 +156,7 @@ namespace AutoDL.ServiceClient
         /// </summary>
         private void DownloadServiceCall(Action<IDownload> serviceFunction)
         {
-            base.ServiceCall<IDownload>(serviceFunction, DownloadFactory);
+            base.ServiceCall<IDownload>(serviceFunction, _downloadFactory);
         }
 
         /// <summary>
@@ -168,11 +164,11 @@ namespace AutoDL.ServiceClient
         /// </summary>
         private TResult DownloadServiceCall<TResult>(Func<IDownload, TResult> serviceFunction)
         {
-            return base.ServiceCall<IDownload, TResult>(serviceFunction, DownloadFactory);
+            return base.ServiceCall<IDownload, TResult>(serviceFunction, _downloadFactory);
         }
 
         //Members
-        private ChannelFactory<IDownload> DownloadFactory;     
+        private ChannelFactory<IDownload> _downloadFactory;     
     }
 
     /// <summary>
@@ -186,15 +182,15 @@ namespace AutoDL.ServiceClient
         /// <param name="serviceExtension">Service endpoint extension.</param>
         public AliasClient(string serviceExtension)
         {
-            AliasFactory = new ChannelFactory<IAlias>(
-                ClientBase.Binding,
-                new EndpointAddress(base.EndpointBase + serviceExtension + "/Alias"));
+            _aliasFactory = new ChannelFactory<IAlias>(
+                ClientBase._binding,
+                new EndpointAddress(base._endpointBase + serviceExtension + "/Alias"));
         }
 
         //Service Methods
-        public void Add(string alias, string name)
+        public void Add(Alias alias)
         {
-            AliasServiceCall((channel) => { channel.Add(alias, name); });
+            AliasServiceCall((channel) => { channel.Add(alias); });
         }
         public void Remove(string alias)
         {
@@ -208,9 +204,9 @@ namespace AutoDL.ServiceClient
         {
             AliasServiceCall((channel) => { channel.Save(); });
         }
-        public Dictionary<string, string> Load()
+        public Alias[] Load()
         {
-            return AliasServiceCall<Dictionary<string, string>>((channel) => { return channel.Load(); });
+            return AliasServiceCall<Alias[]>((channel) => { return channel.Load(); });
         }
         public void ClearSaved()
         {
@@ -224,7 +220,7 @@ namespace AutoDL.ServiceClient
         /// </summary>
         public override void OpenClient()
         {
-            AliasFactory.Open();
+            _aliasFactory.Open();
         }
 
         /// <summary>
@@ -232,7 +228,7 @@ namespace AutoDL.ServiceClient
         /// </summary>
         public override void CloseClient()
         {
-            AliasFactory.Close();
+            _aliasFactory.Close();
         }
 
         /// <summary>
@@ -240,7 +236,7 @@ namespace AutoDL.ServiceClient
         /// </summary>
         private void AliasServiceCall(Action<IAlias> serviceFunction)
         {
-            base.ServiceCall<IAlias>(serviceFunction, AliasFactory);
+            base.ServiceCall<IAlias>(serviceFunction, _aliasFactory);
         }
 
         /// <summary>
@@ -248,11 +244,11 @@ namespace AutoDL.ServiceClient
         /// </summary>
         private TResult AliasServiceCall<TResult>(Func<IAlias, TResult> serviceFunction)
         {
-            return base.ServiceCall<IAlias, TResult>(serviceFunction, AliasFactory);
+            return base.ServiceCall<IAlias, TResult>(serviceFunction, _aliasFactory);
         }
 
         //Members
-        private ChannelFactory<IAlias> AliasFactory;
+        private ChannelFactory<IAlias> _aliasFactory;
     }
 
     /// <summary>
@@ -266,19 +262,19 @@ namespace AutoDL.ServiceClient
         /// <param name="serviceExtension">Service endpoint extension.</param>
         public SettingsClient(string serviceExtension)
         {
-            SettingsFactory = new ChannelFactory<ISettings>(
-                ClientBase.Binding,
-                new EndpointAddress(base.EndpointBase + serviceExtension + "/Settings"));
+            _settingsFactory = new ChannelFactory<ISettings>(
+                ClientBase._binding,
+                new EndpointAddress(base._endpointBase + serviceExtension + "/Settings"));
         }
 
         //Service Methods
-        public void Update(string setting, string value)
+        public void Update(Setting setting)
         {
-            SettingsServiceCall((channel) => { channel.Update(setting, value); });
+            SettingsServiceCall((channel) => { channel.Update(setting); });
         }
-        public void Default(string setting)
+        public void Default(SettingName name)
         {
-            SettingsServiceCall((channel) => { channel.Default(setting); });
+            SettingsServiceCall((channel) => { channel.Default(name); });
         }
         public void DefaultAll()
         {
@@ -288,9 +284,9 @@ namespace AutoDL.ServiceClient
         {
             SettingsServiceCall((channel) => { channel.Save(); });
         }
-        public Dictionary<string, string> Load()
+        public Setting[] Load()
         {
-            return SettingsServiceCall<Dictionary<string, string>>((channel) => { return channel.Load(); });
+            return SettingsServiceCall<Setting[]>((channel) => { return channel.Load(); });
         }
 
         //Class Methods
@@ -300,7 +296,7 @@ namespace AutoDL.ServiceClient
         /// </summary>
         public override void OpenClient()
         {
-            SettingsFactory.Open();
+            _settingsFactory.Open();
         }
 
         /// <summary>
@@ -308,7 +304,7 @@ namespace AutoDL.ServiceClient
         /// </summary>
         public override void CloseClient()
         {
-            SettingsFactory.Close();
+            _settingsFactory.Close();
         }
 
         /// <summary>
@@ -316,7 +312,7 @@ namespace AutoDL.ServiceClient
         /// </summary>
         private void SettingsServiceCall(Action<ISettings> serviceFunction)
         {
-            base.ServiceCall<ISettings>(serviceFunction, SettingsFactory);
+            base.ServiceCall<ISettings>(serviceFunction, _settingsFactory);
         }
 
         /// <summary>
@@ -324,10 +320,10 @@ namespace AutoDL.ServiceClient
         /// </summary>
         private TResult SettingsServiceCall<TResult>(Func<ISettings, TResult> serviceFunction)
         {
-            return base.ServiceCall<ISettings, TResult>(serviceFunction, SettingsFactory);
+            return base.ServiceCall<ISettings, TResult>(serviceFunction, _settingsFactory);
         }
 
         //Members
-        private ChannelFactory<ISettings> SettingsFactory;
+        private ChannelFactory<ISettings> _settingsFactory;
     }
 }

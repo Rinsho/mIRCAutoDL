@@ -54,7 +54,7 @@ void CopyCharArrayToString(char*& udata, String^% mdata)
 /// Execute download command in mIRC.
 /// </summary>
 /// <param name="downloadInfo">The download to be executed</param>
-void SendDownloadInfo(AutoDL::Data::Download^ downloadInfo)
+void SendDownloadInfo(Download^ downloadInfo)
 {
 	char* dl;
 	String^ command = "/Start_DL " + downloadInfo->Name + " " + downloadInfo->Packet;
@@ -81,7 +81,9 @@ void __stdcall LoadDll(LOADINFO* info)
 	message = static_cast<LPSTR>(MapViewOfFile(file, FILE_MAP_ALL_ACCESS, 0, 0, 0));
 
 	//Start AutoDL service
-	Host::Service = gcnew AutoDLMain(gcnew Action<AutoDL::Data::Download^>(SendDownloadInfo), SERVICE_EXTENSION);
+	Host::Service = gcnew AutoDLMain(gcnew Action<Download^>(SendDownloadInfo), SERVICE_EXTENSION);
+	Host::Service->AutoUpdate = true;
+	Host::Service->Open();
 }
 
 /// <summary>
@@ -99,9 +101,9 @@ int __stdcall UnloadDll(int timeout)
 		return 0;
 	}
 	//else on mIRC exit or /dll -u, clean up and unload
-	UnmapViewOfFile(message);
-	CloseHandle(file);
 	Host::Service->Close();
+	UnmapViewOfFile(message);
+	CloseHandle(file);	
 	return 1;
 }
 
@@ -117,11 +119,11 @@ mIRCFunc(AutoDL_Start)
 /// <summary>
 /// Passes status of current download from mIRC to the service.
 /// </summary>
-mIRCFunc(DownloadStatus)
+mIRCFunc(RequestNextDownload)
 {
 	String^ mdata;
 	CopyCharArrayToString(data, mdata);
-	Host::Service->DownloadStatusUpdate(Convert::ToBoolean(mdata));
+	Host::Service->RequestNextDownload(Convert::ToBoolean(mdata));
 	return 1;
 }
 

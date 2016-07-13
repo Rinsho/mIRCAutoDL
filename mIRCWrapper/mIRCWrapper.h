@@ -5,10 +5,11 @@
 #pragma comment(linker, "/EXPORT:LoadDll=_LoadDll@4")
 #pragma comment(linker, "/EXPORT:UnloadDll=_UnloadDll@4")
 #pragma comment(linker, "/EXPORT:AutoDL_Start=_AutoDL_Start@24")
-#pragma comment(linker, "/EXPORT:DownloadStatus=_DownloadStatus@24")
+#pragma comment(linker, "/EXPORT:RequestNextDownload=_RequestNextDownload@24")
 
 using namespace System;
 using namespace AutoDL;
+using namespace AutoDL::ServiceContracts;
 
 #define MIRC_BUFFER 4096
 #define MIRC_DATABUFFER 900
@@ -31,5 +32,5 @@ extern "C"
 	void __stdcall LoadDll(LOADINFO*);
 	int __stdcall UnloadDll(int);
 	mIRCFunc(AutoDL_Start);
-	mIRCFunc(DownloadStatus);
+	mIRCFunc(RequestNextDownload);
 }

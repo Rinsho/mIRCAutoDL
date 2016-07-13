@@ -40,33 +40,29 @@ void CopyCharArrayToString(char*& udata, String^% mdata)
 }
 
 /// <summary>
-/// Class that implements the callback contract for the download service.
+/// Class that implements the callback contract for the update service.
 /// </summary>
 [System::ServiceModel::CallbackBehaviorAttribute(UseSynchronizationContext = false)]
-ref class DownloadCallback : ServiceContracts::IDownloadCallback
+ref class UpdateCallback : IReceiveUpdatesCallback
 {
 public:
-
 	/// <summary>
 	/// Calls the mIRC GUI to update the current finished download status.
 	/// </summary>
-	virtual void DownloadStatusUpdate(ServiceContracts::DownloadStatus status)
+	virtual void StatusUpdate(DownloadStatus status)
 	{
 		char* uCommand;
 		String^ mCommand = "/DownloadStatusUpdate ";
 		switch (status)
 		{
-		case ServiceContracts::DownloadStatus::Success:
+		case DownloadStatus::Success:
 			mCommand += "Complete";
 			break;
-		case ServiceContracts::DownloadStatus::Fail:
+		case DownloadStatus::Fail:
 			mCommand += "Failed";
 			break;
-		case ServiceContracts::DownloadStatus::Retry:
+		case DownloadStatus::Retry:
 			mCommand += "Retrying";
-			break;
-		case ServiceContracts::DownloadStatus::QueueComplete:
-			mCommand += "Finished";
 			break;
 		}
 		CopyStringToCharArray(mCommand, uCommand);
@@ -77,10 +73,10 @@ public:
 	/// <summary>
 	/// Calls the mIRC GUI to update what download is starting.
 	/// </summary>
-	virtual void Downloading(String^ name, int packet)
+	virtual void DownloadingNext(Download^ download)
 	{
 		char* uCommand;
-		String^ mCommand = "/Downloading " + name + " " + packet;
+		String^ mCommand = "/Downloading " + download->Name + " " + download->Packet;
 		CopyStringToCharArray(mCommand, uCommand);
 		strncpy_s(message, MIRC_BUFFER, uCommand, _TRUNCATE);
 		SendMessage(mWnd, WM_MCOMMAND, 1, MIRC_FILEMAPNUM);
@@ -93,10 +89,11 @@ public:
 ref class Host
 {
 public:
-	static DownloadCallback^ DownloadClientCallback;
-	static ServiceClient::DownloadClient^ DownloadClient;
-	static ServiceClient::AliasClient^ AliasClient;
-	static ServiceClient::SettingsClient^ SettingsClient;
+	static UpdateCallback^ UpdateClientCallback;
+	static UpdateSubscriberClient^ UpdateClient;
+	static DownloadClient^ DownloadClient;
+	static AliasClient^ AliasClient;
+	static SettingsClient^ SettingsClient;
 };
 
 /// <summary>
@@ -117,11 +114,17 @@ void __stdcall LoadDll(LOADINFO* info)
 	message = static_cast<LPSTR>(MapViewOfFile(file, FILE_MAP_ALL_ACCESS, 0, 0, 0));
 
 	//Setup service clients
-	Host::DownloadClientCallback = gcnew DownloadCallback();
-	Host::DownloadClient = gcnew ServiceClient::DownloadClient(gcnew System::ServiceModel::InstanceContext(Host::DownloadClientCallback), SERVICE_EXTENSION);
-	Host::AliasClient = gcnew ServiceClient::AliasClient(SERVICE_EXTENSION);
-	Host::SettingsClient = gcnew ServiceClient::SettingsClient(SERVICE_EXTENSION);
+	Host::UpdateClientCallback = gcnew UpdateCallback();
+	Host::UpdateClient = gcnew UpdateSubscriberClient(gcnew System::ServiceModel::InstanceContext(Host::UpdateClientCallback), SERVICE_EXTENSION);
+	Host::DownloadClient = gcnew DownloadClient(SERVICE_EXTENSION);
+	Host::AliasClient = gcnew AliasClient(SERVICE_EXTENSION);
+	Host::SettingsClient = gcnew SettingsClient(SERVICE_EXTENSION);
+
+	//Open clients for use
 	Host::DownloadClient->OpenClient();
+	Host::AliasClient->OpenClient();
+	Host::SettingsClient->OpenClient();
+	Host::UpdateClient->OpenClient();
 }
 
 /// <summary>
@@ -139,11 +142,12 @@ int __stdcall UnloadDll(int timeout)
 		return 0;
 	}
 	//else on mIRC exit or /dll -u, clean up and unload
-	UnmapViewOfFile(message);
-	CloseHandle(file);
 	Host::DownloadClient->CloseClient();
 	Host::AliasClient->CloseClient();
 	Host::SettingsClient->CloseClient();
+	Host::UpdateClient->CloseClient();
+	UnmapViewOfFile(message);
+	CloseHandle(file);	
 	return 1;
 }
 
@@ -194,40 +198,29 @@ TReturn ClientCall(char*& data, TLambda& call)
 
 mIRCFunc(Setting_Update)
 {
-	try
+	ClientCall(data, [&data]() -> void
 	{
-		ClientCall(data, [&data]() -> void
-		{
-			String^ mdata;
-			CopyCharArrayToString(data, mdata);
-			array<String^, 1>^ splitData = mdata->Split(ITEM_SEPARATOR);
-			Host::SettingsClient->Update(splitData[0], splitData[1]);
-		});
-		SendOKMessage(data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::InvalidSettingFault^>^)
-	{
-		SendErrorMessage("Cannot access configuration file", data);
-	}
+		String^ mdata;
+		CopyCharArrayToString(data, mdata);
+		array<String^, 1>^ splitData = mdata->Split(ITEM_SEPARATOR);
+		SettingName^ name = static_cast<SettingName^>(System::Enum::Parse(SettingName::typeid, splitData[0]));
+		Setting^ setting = gcnew Setting(*name, splitData[1]);
+		Host::SettingsClient->Update(setting);
+	});
+	SendOKMessage(data);
 	return 3;
 }
 
 mIRCFunc(Setting_Default)
 {
-	try
+	ClientCall(data, [&data]() -> void
 	{
-		ClientCall(data, [&data]() -> void
-		{
-			String^ mdata;
-			CopyCharArrayToString(data, mdata);
-			Host::SettingsClient->Default(mdata);
-		});
-		SendOKMessage(data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::InvalidSettingFault^>^)
-	{
-		SendErrorMessage("Invalid setting value", data);
-	}
+		String^ mdata;
+		CopyCharArrayToString(data, mdata);
+		SettingName^ name = static_cast<SettingName^>(System::Enum::Parse(SettingName::typeid, mdata));
+		Host::SettingsClient->Default(*name);
+	});
+	SendOKMessage(data);
 	return 3;
 }
 
@@ -258,16 +251,16 @@ mIRCFunc(Setting_Load)
 	{
 		ClientCall(data, [&data]() -> void
 		{
-			Dictionary<String^, String^>^ settings = Host::SettingsClient->Load();
+			array<Setting^,1>^ settings = Host::SettingsClient->Load();
 			System::Text::StringBuilder^ formattedSettings = gcnew System::Text::StringBuilder();
-			for each (KeyValuePair<String^, String^>^ pair in settings)
+			for each (Setting^ s in settings)
 			{
-				formattedSettings->Append(pair->Key);
+				formattedSettings->Append(System::Enum::GetName(SettingName::typeid, s->Name));
 				formattedSettings->Append(ITEM_SEPARATOR);
-				formattedSettings->Append(pair->Value);
-				formattedSettings->Append(GROUP_SEPARATOR);
+				formattedSettings->Append(s->Value);
+				formattedSettings->Append(ITEM_SEPARATOR);
 			}
-			CopyStringToCharArray(formattedSettings->ToString()->TrimEnd(GROUP_SEPARATOR), data);
+			CopyStringToCharArray(formattedSettings->ToString()->TrimEnd(ITEM_SEPARATOR), data);
 		});
 	}
 	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
@@ -287,7 +280,8 @@ mIRCFunc(Alias_Add)
 		String^ mdata;
 		CopyCharArrayToString(data, mdata);
 		array<String^, 1>^ splitData = mdata->Split(ITEM_SEPARATOR);
-		Host::AliasClient->Add(splitData[0], splitData[1]);
+		Alias^ alias = gcnew Alias(splitData[0], splitData[1]);
+		Host::AliasClient->Add(alias);
 	});
 	SendOKMessage(data);
 	return 3;
@@ -332,16 +326,16 @@ mIRCFunc(Alias_Load)
 	{
 		ClientCall(data, [&data]() -> void
 		{
-			Dictionary<String^, String^>^ aliases = Host::AliasClient->Load();
+			array<Alias^, 1>^ aliases = Host::AliasClient->Load();
 			System::Text::StringBuilder^ formattedAliases = gcnew System::Text::StringBuilder();
-			for each (KeyValuePair<String^, String^>^ pair in aliases)
+			for each (Alias^ a in aliases)
 			{
-				formattedAliases->Append(pair->Key);
+				formattedAliases->Append(a->AliasName);
 				formattedAliases->Append(ITEM_SEPARATOR);
-				formattedAliases->Append(pair->Value);
-				formattedAliases->Append(GROUP_SEPARATOR);
+				formattedAliases->Append(a->Name);
+				formattedAliases->Append(ITEM_SEPARATOR);
 			}
-			CopyStringToCharArray(formattedAliases->ToString()->TrimEnd(GROUP_SEPARATOR), data);
+			CopyStringToCharArray(formattedAliases->ToString()->TrimEnd(ITEM_SEPARATOR), data);
 		});
 	}
 	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
@@ -370,27 +364,20 @@ mIRCFunc(Alias_ClearSaved)
 
 mIRCFunc(Download_Add)
 {
-	try
+	ClientCall(data, [&data]() -> void
 	{
-		ClientCall(data, [&data]() -> void
+		String^ mdata;
+		CopyCharArrayToString(data, mdata);
+		array<String^, 1>^ splitData = mdata->Split(ITEM_SEPARATOR);
+		int numberOfDownloads = splitData->Length / 2;
+		array<Download^, 1>^ downloads = gcnew array<Download^>(numberOfDownloads);
+		for (int i = 0; i < numberOfDownloads; i++)
 		{
-			String^ mdata;
-			CopyCharArrayToString(data, mdata);
-			array<String^, 1>^ splitData = mdata->Split(ITEM_SEPARATOR);
-			String^ name = splitData[0];
-			List<int>^ packets = gcnew List<int>();
-			for (int i = 1; i < splitData->Length; i++)
-			{
-				packets->Add(Convert::ToInt32(splitData[i]));
-			}
-			Host::DownloadClient->Add(name, packets);
-		});
-		SendOKMessage(data);
-	}
-	catch (System::ServiceModel::FaultException<ServiceContracts::InvalidPacketFault^>^ ex)
-	{
-		SendErrorMessage(ex->Detail->Description, data);
-	}
+			downloads[i] = gcnew Download(splitData[i * 2], Int32::Parse(splitData[(i * 2) + 1]));
+		}
+		Host::DownloadClient->Add(downloads);
+	});
+	SendOKMessage(data);
 	return 3;
 }
 
@@ -401,20 +388,13 @@ mIRCFunc(Download_Remove)
 		String^ mdata;
 		CopyCharArrayToString(data, mdata);
 		array<String^, 1>^ splitData = mdata->Split(ITEM_SEPARATOR);
-		String^ name = splitData[0];
-		List<int>^ packets = gcnew List<int>();
-		for (int i = 1; i < splitData->Length; i++)
+		int numberOfDownloads = splitData->Length / 2;
+		array<Download^, 1>^ downloads = gcnew array<Download^>(numberOfDownloads);
+		for (int i = 0; i < numberOfDownloads; i++)
 		{
-			packets->Add(Convert::ToInt32(splitData[i]));
+			downloads[i] = gcnew Download(splitData[i * 2], Int32::Parse(splitData[(i * 2) + 1]));
 		}
-		if (packets->Count > 0)
-		{
-			Host::DownloadClient->Remove(name, packets);
-		}
-		else
-		{
-			Host::DownloadClient->Remove(name);
-		}
+		Host::DownloadClient->Remove(downloads);
 	});
 	SendOKMessage(data);
 	return 3;
@@ -447,19 +427,16 @@ mIRCFunc(Download_Load)
 	{
 		ClientCall(data, [&data]() -> void
 		{
-			System::Collections::Specialized::OrderedDictionary^ downloads = Host::DownloadClient->Load();
+			array<Download^, 1>^ downloads = Host::DownloadClient->Load();
 			System::Text::StringBuilder^ formattedDownloads = gcnew System::Text::StringBuilder();
-			for each (KeyValuePair<String^, List<int>^>^ pair in downloads)
+			for each (Download^ d in downloads)
 			{
-				formattedDownloads->Append(pair->Key);
-				for each (int packet in pair->Value)
-				{
-					formattedDownloads->Append(ITEM_SEPARATOR);
-					formattedDownloads->Append(packet);
-				}
-				formattedDownloads->Append(GROUP_SEPARATOR);
+				formattedDownloads->Append(d->Name);
+				formattedDownloads->Append(ITEM_SEPARATOR);
+				formattedDownloads->Append(d->Packet);
+				formattedDownloads->Append(ITEM_SEPARATOR);
 			}
-			CopyStringToCharArray(formattedDownloads->ToString()->TrimEnd(GROUP_SEPARATOR), data);
+			CopyStringToCharArray(formattedDownloads->ToString()->TrimEnd(ITEM_SEPARATOR), data);
 		});
 	}
 	catch (System::ServiceModel::FaultException<ServiceContracts::ConfigurationFault^>^)
