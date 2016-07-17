@@ -2,11 +2,7 @@
 ##### AutoDL program for mIRC
 ---
 **Edit:**
-Sorry for the delay, I was sick the past couple days and weekend.  The alpha will be out this weekend
-regardless of the hours required! I realized when coming back that I wasn't hitting the mark on some
-of my extensibility goals, and could generally structure the program more flexibly.  After today's major
-update, I'm going to work on testing and fixing immediate bugs and/or issues, then release alpha with a simple
-batch installer.  My immediate goal after that is to work on my external WPF GUI and a Wix# installer for beta!
+Hey! Update today fixing all the bugs my test suite could find. Once I confirm my installer works and take the program through some rounds on my box I'll be updating the Wiki and releasing alpha!  My immediate goal after that is to update the program comments (they're outdated to a previous build) then work on my external WPF GUI and a Wix# installer for beta!
 
 Used to manage a download queue for (currently only) mIRC with various quality-of-life improvements!
 The old version is available as the stable v1.0.0 release [here](https://github.com/Rinsho/mIRCAutoDL/releases).
