@@ -41,7 +41,7 @@ namespace AutoDL.Services
         /// Constructor function for Settings-related variables.
         /// </summary>
         /// <param name="filePath">Path to the configuration file.</param>
-        private void SettingsConstructor(SettingsDependencies dependency)
+        public SettingsService(SettingsDependencies dependency)
         {
             _settings = dependency.SettingsDependency;
             _filePath = dependency.FilePath;
@@ -111,7 +111,7 @@ namespace AutoDL.Services
         /// <summary>
         /// Constructor function for Alias-related variables.
         /// </summary>
-        private void AliasConstructor(AliasDependencies dependency)
+        public AliasService(AliasDependencies dependency)
         {
             _aliases = dependency.AliasDependency;
             _filePath = dependency.FilePath;
@@ -199,7 +199,7 @@ namespace AutoDL.Services
         /// </summary>
         /// <param name="filePath">Path to the configuration file.</param>
         /// <param name="wrapperCallback">Callback to send download information to the IRC client wrapper.</param>
-        private void DownloadConstructor(DownloadDependencies dependency)
+        public DownloadService(DownloadDependencies dependency)
         {
             _downloads = dependency.DownloadDependency;
             _filePath = dependency.FilePath;
@@ -218,7 +218,7 @@ namespace AutoDL.Services
         void IDownload.Remove(Download[] downloads)
         {
             List<Download> downloadList = new List<Download>(downloads);
-            _downloads.Add(downloadList);
+            _downloads.Remove(downloadList);
         }
         void IDownload.Clear()
         {

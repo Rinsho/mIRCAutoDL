@@ -9,7 +9,7 @@ namespace AutoDL.ServiceClients
     /// <summary>
     /// Base class for Publisher clients.
     /// </summary>
-    public abstract class ClientBase
+    public abstract class SubscriberClientBase
     {
         /// <summary>
         /// Wrapper for service calls that handles exceptions.
@@ -38,15 +38,15 @@ namespace AutoDL.ServiceClients
             }
         }
 
-        public abstract void OpenClient();
-        public abstract void CloseClient();
+        public abstract void Open();
+        public abstract void Close();
 
         //Members
         protected string _endpointBase = "net.pipe://localhost/AutoDL/";
         protected NetNamedPipeBinding _binding = new NetNamedPipeBinding();
     }
 
-    public class UpdateSubscriberClient : ClientBase, IReceiveUpdates
+    public class UpdateSubscriberClient : SubscriberClientBase, IReceiveUpdates
     {
         public UpdateSubscriberClient(InstanceContext context, string serviceExtension)
         {
@@ -69,11 +69,11 @@ namespace AutoDL.ServiceClients
             (_channel as IClientChannel).Close();
         }
 
-        public override void OpenClient()
+        public override void Open()
         {
             _channelFactory.Open();
         }
-        public override void CloseClient()
+        public override void Close()
         {
             _channelFactory.Close();
         }

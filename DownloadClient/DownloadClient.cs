@@ -11,7 +11,7 @@ namespace AutoDL.ServiceClients
     /// <summary>
     /// Base class for AutoDL service clients.
     /// </summary>
-    public abstract class ClientBase
+    public abstract class DownloadServiceClientBase
     {
         //Methods
 
@@ -77,18 +77,18 @@ namespace AutoDL.ServiceClients
             }
         }
 
-        public abstract void OpenClient();
-        public abstract void CloseClient();
+        public abstract void Open();
+        public abstract void Close();
 
         //Members
         protected string _endpointBase = "net.pipe://localhost/AutoDL/";
-        protected static NetNamedPipeBinding _binding = new NetNamedPipeBinding();
+        protected NetNamedPipeBinding _binding = new NetNamedPipeBinding();
     }
 
     /// <summary>
     /// Client for the download service.
     /// </summary>
-    public class DownloadClient : ClientBase, IDownload
+    public class DownloadClient : DownloadServiceClientBase, IDownload
     {
         /// <summary>
         /// Constructor.
@@ -98,7 +98,7 @@ namespace AutoDL.ServiceClients
         public DownloadClient(string serviceExtension)
         {
             _downloadFactory = new ChannelFactory<IDownload>(
-                ClientBase._binding,
+                _binding,
                 new EndpointAddress(base._endpointBase + serviceExtension + "/Download"));
         }
 
@@ -138,7 +138,7 @@ namespace AutoDL.ServiceClients
         /// <summary>
         /// Explicitly opens the <c>DownloadFactory</c> for use.
         /// </summary>
-        public override void OpenClient()
+        public override void Open()
         {
             _downloadFactory.Open();
         }
@@ -146,13 +146,13 @@ namespace AutoDL.ServiceClients
         /// <summary>
         /// Closes the <c>DownloadFactory</c>.
         /// </summary>
-        public override void CloseClient()
+        public override void Close()
         {
             _downloadFactory.Close();
         }
 
         /// <summary>
-        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T}</c>
+        /// Specializes the <see cref="DownloadServiceClientBase"/> generic function <c>ServiceCall{T}</c>
         /// </summary>
         private void DownloadServiceCall(Action<IDownload> serviceFunction)
         {
@@ -160,7 +160,7 @@ namespace AutoDL.ServiceClients
         }
 
         /// <summary>
-        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T, R}</c>
+        /// Specializes the <see cref="DownloadServiceClientBase"/> generic function <c>ServiceCall{T, R}</c>
         /// </summary>
         private TResult DownloadServiceCall<TResult>(Func<IDownload, TResult> serviceFunction)
         {
@@ -174,7 +174,7 @@ namespace AutoDL.ServiceClients
     /// <summary>
     /// Client for the alias service.
     /// </summary>
-    public class AliasClient : ClientBase, IAlias
+    public class AliasClient : DownloadServiceClientBase, IAlias
     {
         /// <summary>
         /// Constructor.
@@ -183,7 +183,7 @@ namespace AutoDL.ServiceClients
         public AliasClient(string serviceExtension)
         {
             _aliasFactory = new ChannelFactory<IAlias>(
-                ClientBase._binding,
+                _binding,
                 new EndpointAddress(base._endpointBase + serviceExtension + "/Alias"));
         }
 
@@ -218,7 +218,7 @@ namespace AutoDL.ServiceClients
         /// <summary>
         /// Explicitly opens the <c>AliasFactory</c> for use.
         /// </summary>
-        public override void OpenClient()
+        public override void Open()
         {
             _aliasFactory.Open();
         }
@@ -226,13 +226,13 @@ namespace AutoDL.ServiceClients
         /// <summary>
         /// Closes the <c>AliasFactory</c>.
         /// </summary>
-        public override void CloseClient()
+        public override void Close()
         {
             _aliasFactory.Close();
         }
 
         /// <summary>
-        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T}</c>
+        /// Specializes the <see cref="DownloadServiceClientBase"/> generic function <c>ServiceCall{T}</c>
         /// </summary>
         private void AliasServiceCall(Action<IAlias> serviceFunction)
         {
@@ -240,7 +240,7 @@ namespace AutoDL.ServiceClients
         }
 
         /// <summary>
-        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T, R}</c>
+        /// Specializes the <see cref="DownloadServiceClientBase"/> generic function <c>ServiceCall{T, R}</c>
         /// </summary>
         private TResult AliasServiceCall<TResult>(Func<IAlias, TResult> serviceFunction)
         {
@@ -254,7 +254,7 @@ namespace AutoDL.ServiceClients
     /// <summary>
     /// Client for the settings service.
     /// </summary>
-    public class SettingsClient : ClientBase, ISettings
+    public class SettingsClient : DownloadServiceClientBase, ISettings
     {
         /// <summary>
         /// Constructor.
@@ -263,7 +263,7 @@ namespace AutoDL.ServiceClients
         public SettingsClient(string serviceExtension)
         {
             _settingsFactory = new ChannelFactory<ISettings>(
-                ClientBase._binding,
+                _binding,
                 new EndpointAddress(base._endpointBase + serviceExtension + "/Settings"));
         }
 
@@ -294,7 +294,7 @@ namespace AutoDL.ServiceClients
         /// <summary>
         /// Explicitly opens the <c>SettingsFactory</c> for use.
         /// </summary>
-        public override void OpenClient()
+        public override void Open()
         {
             _settingsFactory.Open();
         }
@@ -302,13 +302,13 @@ namespace AutoDL.ServiceClients
         /// <summary>
         /// Closes the <c>SettingsFactory</c>.
         /// </summary>
-        public override void CloseClient()
+        public override void Close()
         {
             _settingsFactory.Close();
         }
 
         /// <summary>
-        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T}</c>
+        /// Specializes the <see cref="DownloadServiceClientBase"/> generic function <c>ServiceCall{T}</c>
         /// </summary>
         private void SettingsServiceCall(Action<ISettings> serviceFunction)
         {
@@ -316,7 +316,7 @@ namespace AutoDL.ServiceClients
         }
 
         /// <summary>
-        /// Specializes the <see cref="ClientBase"/> generic function <c>ServiceCall{T, R}</c>
+        /// Specializes the <see cref="DownloadServiceClientBase"/> generic function <c>ServiceCall{T, R}</c>
         /// </summary>
         private TResult SettingsServiceCall<TResult>(Func<ISettings, TResult> serviceFunction)
         {

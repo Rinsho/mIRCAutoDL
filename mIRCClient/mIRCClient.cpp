@@ -121,10 +121,10 @@ void __stdcall LoadDll(LOADINFO* info)
 	Host::SettingsClient = gcnew SettingsClient(SERVICE_EXTENSION);
 
 	//Open clients for use
-	Host::DownloadClient->OpenClient();
-	Host::AliasClient->OpenClient();
-	Host::SettingsClient->OpenClient();
-	Host::UpdateClient->OpenClient();
+	Host::DownloadClient->Open();
+	Host::AliasClient->Open();
+	Host::SettingsClient->Open();
+	Host::UpdateClient->Open();
 }
 
 /// <summary>
@@ -142,10 +142,10 @@ int __stdcall UnloadDll(int timeout)
 		return 0;
 	}
 	//else on mIRC exit or /dll -u, clean up and unload
-	Host::DownloadClient->CloseClient();
-	Host::AliasClient->CloseClient();
-	Host::SettingsClient->CloseClient();
-	Host::UpdateClient->CloseClient();
+	Host::DownloadClient->Close();
+	Host::AliasClient->Close();
+	Host::SettingsClient->Close();
+	Host::UpdateClient->Close();
 	UnmapViewOfFile(message);
 	CloseHandle(file);	
 	return 1;

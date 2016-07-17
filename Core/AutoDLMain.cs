@@ -167,7 +167,7 @@ namespace AutoDL
             if (_autoUpdate)
             {
                 _publishClient = new ServiceClients.UpdatePublisherClient(_serviceExtension);
-                _publishClient.OpenClient();
+                _publishClient.Open();
             }
         }
         public void Close()
@@ -227,7 +227,7 @@ namespace AutoDL
                     }
                     if (_publishClient != null)
                     {
-                        _publishClient.CloseClient();
+                        _publishClient.Close();
                         _publishClient = null;
                     }
                 }

@@ -117,7 +117,7 @@ namespace AutoDL.ServiceContracts
         //IEquatable implementation
         public bool Equals(Setting other)
         {
-            return (this.Name == other.Name);
+            return (this.Name == other.Name) && (this.Value == other.Value);
         }
 
         //Overriding Object equality comparers

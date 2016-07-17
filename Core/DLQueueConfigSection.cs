@@ -83,7 +83,7 @@ namespace AutoDL.FileConfiguration
 
         protected override object GetElementKey(ConfigurationElement element)
         {
-            return (element as DLQueueItemElement).BotName;
+            return element as DLQueueItemElement;
         }
     }
 
@@ -92,7 +92,7 @@ namespace AutoDL.FileConfiguration
     /// </summary>
     internal class DLQueueItemElement : ConfigurationElement
     {
-        [ConfigurationProperty("botName", IsRequired=true, IsKey=true)]
+        [ConfigurationProperty("botName", IsRequired=true)]
         public string BotName
         {
             get
@@ -107,99 +107,16 @@ namespace AutoDL.FileConfiguration
         }
 
         [ConfigurationProperty("packetList", IsRequired=true)]
-        public PacketCollection PacketList
-        {
-            get
-            {
-                return this["packetList"] as PacketCollection;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Represents a collection of packets.
-    /// </summary>
-    [ConfigurationCollection(typeof(PacketElement), AddItemName="packet")]
-    internal class PacketCollection : ConfigurationElementCollection
-    {
-        public PacketElement this[int index]
-        {
-            get
-            {
-                return BaseGet(index) as PacketElement;
-            }
-
-            set
-            {
-                if (BaseGet(index) != null)
-                {
-                    BaseRemoveAt(index);
-                }
-                BaseAdd(index, value);
-            }
-        }
-
-        public void Add(PacketElement item)
-        {
-            BaseAdd(item);
-        }
-
-        public bool Remove(PacketElement item)
-        {
-            bool success = true;
-            try
-            {
-                BaseRemove(item.Packet);
-            }
-            catch (Exception)
-            {
-                success = false;
-            }
-            return success;
-        }
-
-        public bool Remove(int packetNumber)
-        {
-            bool success = true;
-            try
-            {
-                BaseRemove(packetNumber);
-            }
-            catch (Exception)
-            {
-                success = false;
-            }
-            return success;
-        }
-
-        protected override ConfigurationElement CreateNewElement()
-        {
-            return new PacketElement();
-        }
-
-        protected override object GetElementKey(ConfigurationElement element)
-        {
-            return (element as PacketElement).Packet;
-        }
-    }
-
-    /// <summary>
-    /// Represents a single packet.
-    /// </summary>
-    internal class PacketElement : ConfigurationElement
-    {
-        [ConfigurationProperty("packet", IsRequired=true)]
-        [IntegerValidator(MinValue=0)]
         public int Packet
         {
             get
             {
-                return (int)this["packet"];
+                return (int)this["packetList"];
             }
 
             set
             {
-                this["packet"] = value;
+                this["packetList"] = value;
             }
         }
     }

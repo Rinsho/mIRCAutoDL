@@ -109,8 +109,8 @@ namespace AutoDL.Data
         }
         public void DefaultAll()
         {
-            this.Update(new Setting(SettingName.RetryFailedDownload, RETRY_DEFAULT));
-            this.Update(new Setting(SettingName.DownloadDelay, DELAY_DEFAULT));
+            this.Default(SettingName.RetryFailedDownload);
+            this.Default(SettingName.DownloadDelay);
         }
         public IList<Setting> GetAllData()
         {
@@ -123,10 +123,7 @@ namespace AutoDL.Data
         //IPersistData implementation
         public void Accept(IVisitAndPersistData stateHandler)
         {
-            lock (_lock)
-            {
-                stateHandler.Visit(this);
-            }
+            stateHandler.Visit(this);
         }
     }
 
@@ -196,10 +193,7 @@ namespace AutoDL.Data
         //IPersistData implementation
         public void Accept(IVisitAndPersistData stateHandler)
         {
-            lock (_lock)
-            {
-                stateHandler.Visit(this);
-            }
+            stateHandler.Visit(this);
         }
     }
 
@@ -264,25 +258,17 @@ namespace AutoDL.Data
         {
             if (retry)
             {
-                if (_data.Count != 0)
+                lock (_lock)
                 {
-                    lock (_lock)
+                    if (_data.Count != 0)
                     {
-                        if (_data.Count != 0)
-                        {
-                            return _data[0];
-                        }
-                        else
-                        {
-                            IsDownloading = false;
-                            return null;
-                        }
+                        return _data[0];
                     }
-                }
-                else
-                {
-                    IsDownloading = false;
-                    return null;
+                    else
+                    {
+                        IsDownloading = false;
+                        return null;
+                    }
                 }
             }
             else
@@ -314,10 +300,7 @@ namespace AutoDL.Data
         //IPersistData implementation
         public void Accept(IVisitAndPersistData stateHandler)
         {
-            lock (_lock)
-            {
-                stateHandler.Visit(this);
-            }
+            stateHandler.Visit(this);
         }
     }
 }
