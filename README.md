@@ -2,7 +2,7 @@
 ##### AutoDL program for mIRC
 ---
 **Edit2:**
-Status update:  There's an odd bug in the release build I'm having trouble replicating in my debug build.  Gonna take an extra day trying to work it out.  If I can't I'll just turn optimization options off for now and go ahead with alpha.  Also found out today (technically yesterday I suppose, yay 16 hour dev marathons) that my release build for mIRCClient.dll registers as a suspected Evo-Gen virus/malware in Avast, haha.  No idea why since it doesn't really do anything special that mIRCWrapper.dll doesn't.  Already reported as a false-positive (apparently common for Evo-Gen [Susp]).
+Status update:  There's an odd bug in the release build I'm having trouble replicating in my debug build.  Gonna take an extra day trying to work it out.  If I can't I'll just turn optimization options off for now and go ahead with alpha.
 
 **Edit:**
 Hey! Update today fixing all the bugs my test suite could find. Once I confirm my installer works and take the program through some rounds on my box I'll be updating the Wiki and releasing alpha!  My immediate goal after that is to update the program comments (they're outdated to a previous build) then work on my external WPF GUI and a Wix# installer for beta!
