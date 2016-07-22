@@ -34,7 +34,6 @@ void CopyStringToCharArray(String^% mdata, char*& udata)
 	size_t convertedChars = 0;
 	size_t sizeInBytes = mdata->Length + 1;
 	sizeInBytes = (sizeInBytes < MIRC_DATABUFFER) ? sizeInBytes : MIRC_DATABUFFER;
-	udata = new char[sizeInBytes];
 	wcstombs_s(&convertedChars, udata, sizeInBytes, wch, _TRUNCATE);  //call wcstombs_s and prevent overwriting buffer
 }
 
@@ -44,7 +43,7 @@ void CopyStringToCharArray(String^% mdata, char*& udata)
 /// </summary>
 void CopyCharArrayToString(char*& udata, String^% mdata)
 {
-	array<wchar_t>^ charToTrim = { ' ', ',' , '#' };
+	array<wchar_t>^ charToTrim = { ' ', ',' };
 	mdata = (gcnew String(udata))->Trim(charToTrim);
 }
 
@@ -56,11 +55,66 @@ void CopyCharArrayToString(char*& udata, String^% mdata)
 /// <param name="downloadInfo">The download to be executed</param>
 void SendDownloadInfo(Download^ downloadInfo)
 {
-	char* dl;
-	String^ command = "/Start_DL " + downloadInfo->Name + " " + downloadInfo->Packet;
+	String^ command = "/AutoDL_StartDL " + downloadInfo->Name + " " + downloadInfo->Packet;
+	int length = command->Length + 1;
+	length = (length < MIRC_DATABUFFER) ? length : MIRC_DATABUFFER;
+	char* dl = new char[length];
 	CopyStringToCharArray(command, dl);
 	strncpy_s(message, MIRC_BUFFER, dl, _TRUNCATE);
 	SendMessage(mWnd, WM_MCOMMAND, 1, MIRC_FILEMAPNUM);
+	delete dl;
+}
+
+Assembly^ LoadFromFolder(Object^ sender, ResolveEventArgs^ args)
+{
+	Assembly^ currentAssembly, ^targetAssembly;
+	currentAssembly = Assembly::GetExecutingAssembly();
+	array<AssemblyName^, 1>^ referencedAssemblies = currentAssembly->GetReferencedAssemblies();
+	String^ targetAssemblyName = (gcnew AssemblyName(args->Name))->Name;
+	String^ targetAssemblyPath = "";
+
+	//Check to ensure assembly has not already been loaded
+	array<Assembly^, 1>^ loadedAssemblies = AppDomain::CurrentDomain->GetAssemblies();
+	for each (Assembly^ a in loadedAssemblies)
+	{
+		if (a->FullName->Split(',')[0] == targetAssemblyName)
+		{
+			return a;
+		}
+	}
+
+	//Load assembly if it's a referenced assembly
+	for each (AssemblyName^ a in referencedAssemblies)
+	{
+		if (a->FullName->Split(',')[0] == targetAssemblyName)
+		{
+			targetAssemblyPath = System::IO::Path::Combine(System::IO::Path::GetDirectoryName(currentAssembly->Location), targetAssemblyName + ".dll");
+			break;
+		}
+	}
+
+	//If the assembly doesn't exist in the path or wasn't a referenced assembly, return null
+	if (System::IO::File::Exists(targetAssemblyPath))
+	{
+		targetAssembly = Assembly::LoadFrom(targetAssemblyPath);
+	}
+	else
+	{
+		targetAssembly = nullptr;
+	}
+
+	return targetAssembly;
+}
+
+/// <summary>
+/// Sets up service host
+/// </summary>
+void SetupService()
+{
+	//Start AutoDL service
+	Host::Service = gcnew AutoDLMain(gcnew Action<Download^>(&SendDownloadInfo), SERVICE_EXTENSION);
+	Host::Service->AutoUpdate = true;
+	Host::Service->Open();
 }
 
 /// <summary>
@@ -71,6 +125,10 @@ void SendDownloadInfo(Download^ downloadInfo)
 /// </remarks>
 void __stdcall LoadDll(LOADINFO* info)
 {
+	//Resolve dependencies from executing assembly directory instead of default probed directories
+	//which is limited to \mIRC\ and no sub-directories when this DLL is loaded in mIRC.
+	AppDomain::CurrentDomain->AssemblyResolve += gcnew ResolveEventHandler(&LoadFromFolder);
+
 	//Set mIRC LOADINFO paramaters
 	info->mKeep = true;
 	info->mUnicode = false;
@@ -79,11 +137,11 @@ void __stdcall LoadDll(LOADINFO* info)
 	//Setup file mapping with mIRC
 	file = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, MIRC_BUFFER, MIRC_FILEMAP);
 	message = static_cast<LPSTR>(MapViewOfFile(file, FILE_MAP_ALL_ACCESS, 0, 0, 0));
-
-	//Start AutoDL service
-	Host::Service = gcnew AutoDLMain(gcnew Action<Download^>(SendDownloadInfo), SERVICE_EXTENSION);
-	Host::Service->AutoUpdate = true;
-	Host::Service->Open();
+	
+	//Setup Service
+	//Note: Removed setup from in-line so AutoDL::AutoDLMain won't be resolved before my handler
+	//is applied to the AssemblyResolve event.
+	SetupService();
 }
 
 /// <summary>

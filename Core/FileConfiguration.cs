@@ -61,7 +61,7 @@ namespace AutoDL.FileConfiguration
 
         protected void CheckForValidAliasSection(Configuration config)
         {
-            if (config.Sections.Get(AliasSection.SECTION_NAME) == null)
+            if (config.Sections[AliasSection.SECTION_NAME] == null)
             {
                 config.Sections.Add(AliasSection.SECTION_NAME, new AliasSection());
                 SaveFile(config, AliasSection.SECTION_NAME);
@@ -69,7 +69,7 @@ namespace AutoDL.FileConfiguration
         }
         protected void CheckForValidDownloadSection(Configuration config)
         {
-            if (config.Sections.Get(DLQueueSection.SECTION_NAME) == null)
+            if (config.Sections[DLQueueSection.SECTION_NAME] == null)
             {
                 config.Sections.Add(DLQueueSection.SECTION_NAME, new DLQueueSection());
                 SaveFile(config, DLQueueSection.SECTION_NAME);

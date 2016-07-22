@@ -134,12 +134,28 @@ namespace AutoDL.ServiceContracts
     /// <summary>
     /// Represents supported settings.
     /// </summary>
-    public enum SettingName : int { RetryFailedDownload = 0, DownloadDelay = 1 };
+    [DataContract]
+    public enum SettingName : int 
+    {
+        [EnumMember]
+        RetryFailedDownload = 0, 
+        [EnumMember]
+        DownloadDelay = 1 
+    };
 
     /// <summary>
     /// Represents the status of a download.
     /// </summary>
-    public enum DownloadStatus : int { Success, Fail, Retry };
+    [DataContract]
+    public enum DownloadStatus : int 
+    { 
+        [EnumMember]
+        Success, 
+        [EnumMember]
+        Fail, 
+        [EnumMember]
+        Retry 
+    };
 
     /// <summary>
     /// Class to hold <c>Fault</c> information relating to configuration file errors.

@@ -25,6 +25,7 @@
 
 using namespace System;
 using namespace System::Collections::Generic;
+using namespace System::Reflection;
 using namespace AutoDL;
 using namespace AutoDL::ServiceContracts;
 using namespace AutoDL::ServiceClients;
@@ -35,7 +36,7 @@ using namespace AutoDL::ServiceClients;
 #define MIRC_FILEMAPNUM 8
 #define WM_MCOMMAND WM_USER + 200
 #define WM_MEVALUATE WM_USER + 201
-#define ITEM_SEPARATOR ','
+#define ITEM_SEPARATOR L','
 #define SERVICE_EXTENSION "mIRC"
 #define mIRCFunc(x) int __stdcall x(HWND mWnd, HWND aWnd, char* data, char* params, bool show, bool nopause)
 

@@ -94,7 +94,7 @@ namespace AutoDL.Services
             {
                 ConfigurationFault fault = new ConfigurationFault()
                 {
-                    Description = "Settings.Load(): Error accessing file " +ex.Filename
+                    Description = "Settings.Load(): Error accessing file " + ex.Filename
                 };
                 throw new FaultException<ConfigurationFault>(fault);
             }
@@ -288,7 +288,11 @@ namespace AutoDL.Services
             if (_downloads.IsDownloading == false)
             {               
                 _downloads.IsDownloading = true;
-                _callback(_downloads.NextDownload(true));
+                Download download = _downloads.NextDownload(true);
+                if (download != null)
+                {
+                    _callback(download);
+                }
             }
         }
 
@@ -316,7 +320,7 @@ namespace AutoDL.Services
                 };
             NextDownloadEvent += _nextDownloadHandler;
 
-            //OperationContext.Current.InstanceContext.Closed += (s, e) => Unsubscribe();
+            OperationContext.Current.InstanceContext.Closing += (s, e) => { Unsubscribe(); };
         }
 
         public void Unsubscribe()

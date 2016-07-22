@@ -31,7 +31,7 @@ namespace AutoDL
         /// </param>
         public AutoDLMain(Action<Download> wrapperCallback, string serviceExtension)
         {
-            _filePath = AppDomain.CurrentDomain.BaseDirectory + "AutoDL.dll.config";         
+            _filePath = AppDomain.CurrentDomain.BaseDirectory + "\\AutoDL\\AutoDL.dll.config";         
             _wrapperCallback = wrapperCallback;
             _serviceExtension = serviceExtension;
             AutoUpdate = true;
@@ -41,7 +41,7 @@ namespace AutoDL
             _aliasData = new AliasData();
             _settingsData = new SettingsData();
 
-            string baseServiceAddress = @"net.pipe://localhost/AutoDL/" + _serviceExtension;
+            string baseServiceAddress = "net.pipe://localhost/AutoDL/" + _serviceExtension;
 
             //Download Service Setup
             NetNamedPipeBinding binding = new NetNamedPipeBinding();
@@ -81,6 +81,7 @@ namespace AutoDL
             
             //Update Service Setup
             binding = new NetNamedPipeBinding();
+            binding.ReceiveTimeout = new TimeSpan(1, 0, 0);
             _updateHost = new ServiceHost(typeof(UpdateManager),
                 new Uri(baseServiceAddress + "/Update"));
             _updateHost.AddServiceEndpoint(typeof(IReceiveUpdates), binding, "Subscribe");
@@ -99,11 +100,11 @@ namespace AutoDL
 
         internal void SendDownload(Download download)
         {
-            Download checkedDownload = CheckForAlias(download);
             if (_autoUpdate)
             {
-                _publishClient.PublishNextDownload(checkedDownload);
+                _publishClient.PublishNextDownload(download);
             }
+            Download checkedDownload = CheckForAlias(download);
             _wrapperCallback(checkedDownload);           
         }
 
@@ -115,8 +116,7 @@ namespace AutoDL
         {
             bool retry = !success && (bool)_settingsData[SettingName.RetryFailedDownload];
             int downloadDelay = (int)_settingsData[SettingName.DownloadDelay];
-            Download download = CheckForAlias(_downloadData.NextDownload(retry));
-
+            Download download = _downloadData.NextDownload(retry);
             if (_autoUpdate)
             {
                 if (success)
@@ -131,16 +131,13 @@ namespace AutoDL
                 {
                     _publishClient.PublishStatusUpdate(DownloadStatus.Fail);
                 }
-
-                if (download != null)
-                {
-                    _publishClient.PublishNextDownload(download);
-                }
             }
 
             if (download != null)
             {
-                System.Threading.Timer DelayTimer = new System.Threading.Timer(new System.Threading.TimerCallback(x =>
+                _publishClient.PublishNextDownload(download);
+                download = CheckForAlias(download);
+                _delayTimer = new System.Threading.Timer(new System.Threading.TimerCallback(x =>
                 {
                     try
                     {
@@ -151,8 +148,8 @@ namespace AutoDL
                         (x as System.Threading.Timer).Dispose();
                     }
                 }));
-                DelayTimer.Change(downloadDelay * 1000, System.Threading.Timeout.Infinite);
-            }
+                _delayTimer.Change(downloadDelay * 1000, System.Threading.Timeout.Infinite);
+            }           
         }
 
         public void Open()
@@ -186,7 +183,8 @@ namespace AutoDL
         private ServiceClients.UpdatePublisherClient _publishClient;
         private string _filePath;
         private string _serviceExtension;
-        private Action<Download> _wrapperCallback;      
+        private Action<Download> _wrapperCallback;
+        private System.Threading.Timer _delayTimer;
 
         //Properties
         private bool _autoUpdate;

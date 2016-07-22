@@ -25,7 +25,6 @@ void CopyStringToCharArray(String^% mdata, char*& udata)
 	size_t convertedChars = 0;
 	size_t sizeInBytes = mdata->Length + 1;
 	sizeInBytes = (sizeInBytes < MIRC_DATABUFFER) ? sizeInBytes : MIRC_DATABUFFER;
-	udata = new char[sizeInBytes];
 	wcstombs_s(&convertedChars, udata, sizeInBytes, wch, _TRUNCATE);  //call wcstombs_s and prevent overwriting buffer
 }
 
@@ -35,7 +34,7 @@ void CopyStringToCharArray(String^% mdata, char*& udata)
 /// </summary>
 void CopyCharArrayToString(char*& udata, String^% mdata)
 {
-	array<wchar_t>^ charToTrim = { ' ', ',', '#' };
+	array<wchar_t>^ charToTrim = { ' ', ',' };
 	mdata = (gcnew String(udata))->Trim(charToTrim);
 }
 
@@ -51,8 +50,7 @@ public:
 	/// </summary>
 	virtual void StatusUpdate(DownloadStatus status)
 	{
-		char* uCommand;
-		String^ mCommand = "/DownloadStatusUpdate ";
+		String^ mCommand = "/AutoDL_StatusUpdate ";
 		switch (status)
 		{
 		case DownloadStatus::Success:
@@ -65,9 +63,13 @@ public:
 			mCommand += "Retrying";
 			break;
 		}
+		int length = mCommand->Length + 1;
+		length = (length < MIRC_DATABUFFER) ? length : MIRC_DATABUFFER;
+		char* uCommand = new char[length];
 		CopyStringToCharArray(mCommand, uCommand);
 		strncpy_s(message, MIRC_BUFFER, uCommand, _TRUNCATE);
 		SendMessage(mWnd, WM_MCOMMAND, 1, MIRC_FILEMAPNUM);
+		delete uCommand;
 	}
 
 	/// <summary>
@@ -75,11 +77,14 @@ public:
 	/// </summary>
 	virtual void DownloadingNext(Download^ download)
 	{
-		char* uCommand;
-		String^ mCommand = "/Downloading " + download->Name + " " + download->Packet;
+		String^ mCommand = "/AutoDL_Downloading " + download->Name + " " + download->Packet;
+		int length = mCommand->Length + 1;
+		length = (length < MIRC_DATABUFFER) ? length : MIRC_DATABUFFER;
+		char* uCommand = new char[length];
 		CopyStringToCharArray(mCommand, uCommand);
 		strncpy_s(message, MIRC_BUFFER, uCommand, _TRUNCATE);
 		SendMessage(mWnd, WM_MCOMMAND, 1, MIRC_FILEMAPNUM);
+		delete uCommand;
 	}
 };
 
@@ -96,23 +101,49 @@ public:
 	static SettingsClient^ SettingsClient;
 };
 
-/// <summary>
-/// DLL entry-point.
-/// </summary>
-/// <remarks>
-/// Called by mIRC automatically when DLL is loaded.
-/// </remarks>
-void __stdcall LoadDll(LOADINFO* info)
+Assembly^ LoadFromFolder(Object^ sender, ResolveEventArgs^ args)
 {
-	//Set mIRC LOADINFO paramaters
-	info->mKeep = true;
-	info->mUnicode = false;
-	mWnd = info->mHwnd;
+	Assembly^ currentAssembly, ^targetAssembly;
+	currentAssembly = Assembly::GetExecutingAssembly();
+	array<AssemblyName^, 1>^ referencedAssemblies = currentAssembly->GetReferencedAssemblies();
+	String^ targetAssemblyName = (gcnew AssemblyName(args->Name))->Name;
+	String^ targetAssemblyPath = "";
 
-	//Setup file mapping with mIRC
-	file = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, MIRC_BUFFER, MIRC_FILEMAP);
-	message = static_cast<LPSTR>(MapViewOfFile(file, FILE_MAP_ALL_ACCESS, 0, 0, 0));
+	//Check to ensure assembly has not already been loaded
+	array<Assembly^, 1>^ loadedAssemblies = AppDomain::CurrentDomain->GetAssemblies();
+	for each (Assembly^ a in loadedAssemblies)
+	{
+		if (a->FullName->Split(',')[0] == targetAssemblyName)
+		{
+			return a;
+		}
+	}
 
+	//Load assembly if it's a referenced assembly
+	for each (AssemblyName^ a in referencedAssemblies)
+	{
+		if (a->FullName->Split(',')[0] == targetAssemblyName)
+		{
+			targetAssemblyPath = System::IO::Path::Combine(System::IO::Path::GetDirectoryName(currentAssembly->Location), targetAssemblyName + ".dll");
+			break;
+		}
+	}
+
+	//If the assembly doesn't exist in the path or wasn't a referenced assembly, return null
+	if (System::IO::File::Exists(targetAssemblyPath))
+	{
+		targetAssembly = Assembly::LoadFrom(targetAssemblyPath);
+	}
+	else
+	{
+		targetAssembly = nullptr;
+	}
+
+	return targetAssembly;
+}
+
+void SetupAndOpenClients()
+{
 	//Setup service clients
 	Host::UpdateClientCallback = gcnew UpdateCallback();
 	Host::UpdateClient = gcnew UpdateSubscriberClient(gcnew System::ServiceModel::InstanceContext(Host::UpdateClientCallback), SERVICE_EXTENSION);
@@ -125,6 +156,29 @@ void __stdcall LoadDll(LOADINFO* info)
 	Host::AliasClient->Open();
 	Host::SettingsClient->Open();
 	Host::UpdateClient->Open();
+	Host::UpdateClient->Subscribe();
+}
+
+/// <summary>
+/// DLL entry-point.
+/// </summary>
+/// <remarks>
+/// Called by mIRC automatically when DLL is loaded.
+/// </remarks>
+void __stdcall LoadDll(LOADINFO* info)
+{
+	AppDomain::CurrentDomain->AssemblyResolve += gcnew ResolveEventHandler(&LoadFromFolder);
+
+	//Set mIRC LOADINFO paramaters
+	info->mKeep = true;
+	info->mUnicode = false;
+	mWnd = info->mHwnd;
+
+	//Setup file mapping with mIRC
+	file = CreateFileMapping(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, MIRC_BUFFER, MIRC_FILEMAP);
+	message = static_cast<LPSTR>(MapViewOfFile(file, FILE_MAP_ALL_ACCESS, 0, 0, 0));
+
+	SetupAndOpenClients();
 }
 
 /// <summary>
@@ -145,6 +199,7 @@ int __stdcall UnloadDll(int timeout)
 	Host::DownloadClient->Close();
 	Host::AliasClient->Close();
 	Host::SettingsClient->Close();
+	Host::UpdateClient->Unsubscribe();
 	Host::UpdateClient->Close();
 	UnmapViewOfFile(message);
 	CloseHandle(file);	
@@ -167,7 +222,10 @@ void SendErrorMessage(String^ text, char*& udata)
 /// <param name="udata">mIRCFunc return data variable.</param>
 void SendOKMessage(char*& udata)
 {
-	udata = new char[]{ '#', 'O', 'K' };
+	udata[0] = '#';
+	udata[1] = 'O';
+	udata[2] = 'K';
+	udata[3] = '\0';
 }
 
 /// <summary>
@@ -252,12 +310,12 @@ mIRCFunc(Setting_Load)
 		ClientCall(data, [&data]() -> void
 		{
 			array<Setting^,1>^ settings = Host::SettingsClient->Load();
-			System::Text::StringBuilder^ formattedSettings = gcnew System::Text::StringBuilder();
+			System::Text::StringBuilder^ formattedSettings = gcnew System::Text::StringBuilder();			
 			for each (Setting^ s in settings)
 			{
 				formattedSettings->Append(System::Enum::GetName(SettingName::typeid, s->Name));
 				formattedSettings->Append(ITEM_SEPARATOR);
-				formattedSettings->Append(s->Value);
+				formattedSettings->Append(s->Value->ToString());
 				formattedSettings->Append(ITEM_SEPARATOR);
 			}
 			CopyStringToCharArray(formattedSettings->ToString()->TrimEnd(ITEM_SEPARATOR), data);
@@ -369,11 +427,11 @@ mIRCFunc(Download_Add)
 		String^ mdata;
 		CopyCharArrayToString(data, mdata);
 		array<String^, 1>^ splitData = mdata->Split(ITEM_SEPARATOR);
-		int numberOfDownloads = splitData->Length / 2;
+		int numberOfDownloads = (splitData->Length) / 2;
 		array<Download^, 1>^ downloads = gcnew array<Download^>(numberOfDownloads);
 		for (int i = 0; i < numberOfDownloads; i++)
 		{
-			downloads[i] = gcnew Download(splitData[i * 2], Int32::Parse(splitData[(i * 2) + 1]));
+			downloads[i] = gcnew Download(splitData[i * 2], Convert::ToInt32(splitData[(i * 2) + 1]));
 		}
 		Host::DownloadClient->Add(downloads);
 	});

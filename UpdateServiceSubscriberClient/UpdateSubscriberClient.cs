@@ -50,17 +50,16 @@ namespace AutoDL.ServiceClients
     {
         public UpdateSubscriberClient(InstanceContext context, string serviceExtension)
         {
-            base._binding.ReceiveTimeout = new TimeSpan(0, 30, 0);
             _channelFactory = new DuplexChannelFactory<IReceiveUpdates>(
                 context,
                 base._binding,
                 new EndpointAddress(base._endpointBase + serviceExtension + "/Update/Subscribe"));
-            _channelFactory.Faulted += (s, e) => { OnFaulted(); };
+            _channelFactory.Faulted += (s, e) => { ChannelFault(); };
         }
 
         public void Subscribe()
         {
-            _channel = _channelFactory.CreateChannel(); ;          
+            _channel = _channelFactory.CreateChannel();         
             ServiceCall(() => { _channel.Subscribe(); }, _channel);
         }
         public void Unsubscribe()
@@ -77,9 +76,10 @@ namespace AutoDL.ServiceClients
         {
             _channelFactory.Close();
         }
-        private void OnFaulted()
+        private void ChannelFault()
         {
             (_channel as IClientChannel).Abort();
+            _channel = null;
             Subscribe();
         }
 

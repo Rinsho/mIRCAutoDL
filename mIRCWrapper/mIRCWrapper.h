@@ -8,6 +8,7 @@
 #pragma comment(linker, "/EXPORT:RequestNextDownload=_RequestNextDownload@24")
 
 using namespace System;
+using namespace System::Reflection;
 using namespace AutoDL;
 using namespace AutoDL::ServiceContracts;
 

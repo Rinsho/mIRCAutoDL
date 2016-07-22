@@ -69,8 +69,8 @@ namespace AutoDL.Data
         }
 
         //Members
-        public const bool RETRY_DEFAULT = false;
-        public const int DELAY_DEFAULT = 5;
+        public static readonly bool RETRY_DEFAULT = false;
+        public static readonly int DELAY_DEFAULT = 5;
         private List<Setting> _data;
         private object _lock;
 
@@ -176,11 +176,17 @@ namespace AutoDL.Data
         }
         public void Remove(string alias)
         {
-            _data.Remove(alias);
+            lock (_lock)
+            {
+                _data.Remove(alias);
+            }
         }
         public void Clear()
         {
-            _data.Clear();
+            lock (_lock)
+            {
+                _data.Clear();
+            }
         }
         public IList<Alias> GetAllData()
         {
@@ -232,14 +238,20 @@ namespace AutoDL.Data
         }
         public void Remove(List<Download> downloads)
         {
-            foreach (Download d in downloads)
+            lock (_lock)
             {
-                _data.Remove(d);
+                foreach (Download d in downloads)
+                {
+                    _data.Remove(d);
+                }
             }
         }
         public void Clear()
         {
-            _data.Clear();
+            lock (_lock)
+            {
+                _data.Clear();
+            }
         }      
         public IList<Download> GetAllData()
         {
