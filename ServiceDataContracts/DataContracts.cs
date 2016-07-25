@@ -1,4 +1,6 @@
-﻿using System;
+﻿//Data contracts used by the AutoDL services.
+
+using System;
 using System.Collections.Generic;
 
 using System.Runtime.Serialization;
@@ -6,9 +8,9 @@ using System.Runtime.Serialization;
 namespace AutoDL.ServiceContracts
 {
     /// <summary>
-    /// Represents a single download.  Immutable to avoid
-    /// breaking GetHashCode in collections.
+    /// Represents a single download.
     /// </summary>
+    /// <remarks>Immutable to avoid breaking GetHashCode in collections.</remarks>
     [DataContract]
     public class Download : IEquatable<Download>
     {
@@ -42,10 +44,10 @@ namespace AutoDL.ServiceContracts
     }
 
     /// <summary>
-    /// Represents an alias/name pair.  Immutable to avoid
-    /// breaking GetHashCode in collections.
+    /// Represents an alias/name pair.
     /// </summary>
     /// <remarks>
+    /// Immutable to avoid breaking GetHashCode in collections.
     /// Equality only compares the Alias property because that
     /// defines uniqueness.
     /// </remarks>
@@ -82,10 +84,10 @@ namespace AutoDL.ServiceContracts
     }
 
     /// <summary>
-    /// Represents a setting/value pair.  Immutable to avoid
-    /// breaking GetHashCode in collections.
+    /// Represents a setting/value pair.
     /// </summary>
     /// <remarks>
+    /// Immutable to avoid breaking GetHashCode in collections.
     /// Equality only compares the Name property because that
     /// defines uniqueness.
     /// </remarks>

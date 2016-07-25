@@ -1,4 +1,6 @@
-﻿using System;
+﻿//Classes for publishing download updates.
+
+using System;
 using System.Collections.Generic;
 using System.ServiceModel;
 
@@ -15,19 +17,17 @@ namespace AutoDL.ServiceClients
         /// Wrapper for service calls that handles channel creation, disposal,
         /// and common exceptions.
         /// </summary>
-        /// <typeparam name="TServiceType">Service contract being used.</typeparam>
         /// <param name="serviceFunction">Service function to call.</param>
         /// <param name="factory">ChannelFactory object for the service contract being used.</param>
         /// <example>
-        /// ServiceCall{IServiceContract}( (channel) => { channel.ServiceFunction(); }, factory );
+        /// ServiceCall( (channel) => { channel.ServiceFunction(); }, factory );
         /// </example>
         /// <remarks>Sessions will not be maintained as IChannel.Close() is called after each service call.</remarks>
-        protected virtual void ServiceCall<TServiceType>(
-            Action<TServiceType> serviceFunction,
-            ChannelFactory<TServiceType> factory)
-            where TServiceType : class
+        protected virtual void ServiceCall(
+            Action<IUpdateStatus> serviceFunction,
+            ChannelFactory<IUpdateStatus> factory)
         {
-            TServiceType channel = factory.CreateChannel();
+            IUpdateStatus channel = factory.CreateChannel();
             try
             {
                 serviceFunction(channel);
@@ -53,8 +53,15 @@ namespace AutoDL.ServiceClients
         protected NetNamedPipeBinding _binding = new NetNamedPipeBinding();
     }
 
+    /// <summary>
+    /// Client used to publish download updates.
+    /// </summary>
     public class UpdatePublisherClient : PublisherClientBase, IUpdateStatus
     {
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="serviceExtension">Extension for service used to configure endpoint.</param>
         public UpdatePublisherClient(string serviceExtension)
         {
             _channelFactory = new ChannelFactory<IUpdateStatus>(
@@ -64,17 +71,24 @@ namespace AutoDL.ServiceClients
 
         public void PublishStatusUpdate(DownloadStatus status)
         {
-            ServiceCall<IUpdateStatus>((channel) => { channel.PublishStatusUpdate(status); }, _channelFactory);
+            ServiceCall((channel) => { channel.PublishStatusUpdate(status); }, _channelFactory);
         }
         public void PublishNextDownload(Download download)
         {
-            ServiceCall<IUpdateStatus>((channel) => { channel.PublishNextDownload(download); }, _channelFactory);
+            ServiceCall((channel) => { channel.PublishNextDownload(download); }, _channelFactory);
         }
 
+        /// <summary>
+        /// Opens client for use.
+        /// </summary>
         public override void Open()
         {
             _channelFactory.Open();
         }
+
+        /// <summary>
+        /// Closes client.
+        /// </summary>
         public override void Close()
         {
             _channelFactory.Close();

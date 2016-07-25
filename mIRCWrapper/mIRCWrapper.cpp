@@ -10,7 +10,7 @@ LPSTR message;
 HWND mWnd;
 
 /// <summary>
-/// Class that holds the service.
+/// Class that holds the service reference.
 /// </summary>
 ref class Host
 {
@@ -65,6 +65,9 @@ void SendDownloadInfo(Download^ downloadInfo)
 	delete dl;
 }
 
+/// <summary>
+/// Loads DLL dependencies into LoadFrom context.
+/// </summary>
 Assembly^ LoadFromFolder(Object^ sender, ResolveEventArgs^ args)
 {
 	Assembly^ currentAssembly, ^targetAssembly;
@@ -107,7 +110,7 @@ Assembly^ LoadFromFolder(Object^ sender, ResolveEventArgs^ args)
 }
 
 /// <summary>
-/// Sets up service host
+/// Sets up service host.
 /// </summary>
 void SetupService()
 {
@@ -121,12 +124,12 @@ void SetupService()
 /// DLL entry-point.
 /// </summary>
 /// <remarks>
-/// Called by mIRC automatically when DLL is loaded.
+/// Called by mIRC automatically when DLL is first called.
 /// </remarks>
 void __stdcall LoadDll(LOADINFO* info)
 {
 	//Resolve dependencies from executing assembly directory instead of default probed directories
-	//which is limited to \mIRC\ and no sub-directories when this DLL is loaded in mIRC.
+	//which is limited to mIRC\ when this DLL is loaded in mIRC.
 	AppDomain::CurrentDomain->AssemblyResolve += gcnew ResolveEventHandler(&LoadFromFolder);
 
 	//Set mIRC LOADINFO paramaters
@@ -166,7 +169,7 @@ int __stdcall UnloadDll(int timeout)
 }
 
 /// <summary>
-/// Just a pointless call to allow DLL to be loaded and setup
+/// Call to allow DLL to be loaded and setup
 /// since mIRC doesn't have an explicit DLL "load" call.
 /// </summary>
 mIRCFunc(AutoDL_Start)
@@ -175,7 +178,8 @@ mIRCFunc(AutoDL_Start)
 }
 
 /// <summary>
-/// Passes status of current download from mIRC to the service.
+/// Passes status of current download from mIRC to the service
+/// and requests next download.
 /// </summary>
 mIRCFunc(RequestNextDownload)
 {

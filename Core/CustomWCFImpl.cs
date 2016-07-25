@@ -1,4 +1,6 @@
-﻿using System;
+﻿//Extension for WCF allowing dependent services.
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -13,8 +15,17 @@ using System.ServiceModel.Description;
 
 namespace AutoDL.WCF
 {
+    /// <summary>
+    /// Service host that accepts dependent service class.
+    /// </summary>
+    /// <typeparam name="TDep">Dependent object type.</typeparam>
     internal class DependentServiceHost<TDep> : ServiceHost
     {
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="serviceType">Service class type.</param>
+        /// <param name="dependency">Dependency object.</param>
         public DependentServiceHost(Type serviceType, TDep dependency, params Uri[] uris)
             : base(serviceType, uris)
         {
@@ -26,8 +37,17 @@ namespace AutoDL.WCF
         }
     }
 
+    /// <summary>
+    /// Instance provider for <see cref="DependentServiceHost{TDep}"/>.
+    /// </summary>
+    /// <typeparam name="TDep">Dependent object type.</typeparam>
     internal class DependencyInstanceProvider<TDep> : IInstanceProvider, IServiceBehavior
     {
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="serviceType">Service class type.</param>
+        /// <param name="dependency">Dependency object.</param>
         public DependencyInstanceProvider(Type serviceType, TDep dependency)
         {
             _dependency = dependency;

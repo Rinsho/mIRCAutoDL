@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;Start of Auto-DL;;;;;;;;;;;;;;;;;;
-;;;;;;;;;;;;;;;;;;;;;;v2.0.0;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;v1.5.0;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;--------------------------------------------------
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -78,25 +78,25 @@ dialog -l AutoDLTable {
   menu "&Help", 60
   item "&About", 54, 60
 
-  box "Download Controls", 7, 110 35 85 120
+  box "Download Controls", 7, 110 35 85 70
   text "Bot:", 8, 115 45 10 10
   edit "", 9, 128 45 60 10, autohs
   text "Packet(s):", 10, 115 60 25 10
   edit "", 11, 143 60 45 10, autohs
   button "Add", 12, 168 72 20 10
-  button "Start Download", 19, 115 90 75 15
+  button "Start Download", 19, 115 85 75 15
 
-  box "Download Queue", 1, 5 5 100 150
-  list 2, 10 15 90 120, hsbar vsbar multsel
-  list 18, 10 130 90 27, vsbar
-  button "Clear Status", 20, 10 157 40 10
-  button "Cancel Selected", 17, 55 157 50 10
+  box "Download Queue", 1, 5 5 100 165
+  icon 17, 90 10 10 10, " $+ $nofile($mircexe) $+ AutoDL\Images\Delete.png $+ ", small
+  list 2, 10 20 90 120, hsbar vsbar multsel
+  list 18, 10 135 90 27, vsbar
+  button "Clear Status", 20, 60 157 40 10
 
-
-  box "", 13, 115 106 75 45
-  button "Clear Queue", 3, 122 113 60 10
-  button "Save Queue", 14, 122 125 60 10
-  button "Load Queue", 15, 122 137 60 10
+  box "Queue Controls", 13, 110 110 85 48 
+  button "Clear", 3, 115 120 30 34
+  button "Save", 14, 150 120 35 10
+  button "Load", 15, 150 132 35 10
+  button "Clear Saved", 21, 150 144 35 10
 
   box "Join Channel", 4, 110 5 85 22
   edit "", 5, 115 13 58 10, autohs
@@ -755,6 +755,20 @@ alias -l /LoadAll {
 ;;;
 on *:dialog:AutoDL:sclick:20:{
   /did -r AutoDL 18
+}
+
+;;;
+;;;Clear Saved Queue Event
+;;;
+on *:dialog:AutoDL:sclick:21:{
+  var %result = $dll(%UIDLLName, Download_ClearSaved, None)
+  if (%result == #OK) {
+    /AutoDL_Notification Saved Queue cleared.
+  }
+  else {
+    tokenize 44 %result
+    /AutoDL_Notification $+($1, $chr(58), $chr(32), $2)
+  }
 }
 
 ;;;

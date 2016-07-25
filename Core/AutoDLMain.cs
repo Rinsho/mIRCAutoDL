@@ -23,12 +23,8 @@ namespace AutoDL
         /// <summary>
         /// Constructor
         /// </summary>
-        /// <param name="callback">Wrapper callback function for receiving download information.</param>
+        /// <param name="wrapperCallback">Wrapper callback function for receiving download information.</param>
         /// <param name="serviceExtension">Extension for configuring <c>ServiceHost</c> endpoint.</param>
-        /// <param name="autoUpdate">
-        /// Defines whether to enable automatic download status updates through Download Service (true) or
-        /// manually through wrapper (false). Default: true.
-        /// </param>
         public AutoDLMain(Action<Download> wrapperCallback, string serviceExtension)
         {
             _filePath = AppDomain.CurrentDomain.BaseDirectory + "\\AutoDL\\AutoDL.dll.config";         
@@ -88,6 +84,10 @@ namespace AutoDL
             _updateHost.AddServiceEndpoint(typeof(IUpdateStatus), binding, "Publish");           
         }
 
+        /// <summary>
+        /// Checks if a download is using a registered alias
+        /// </summary>
+        /// <returns>Download with full name.</returns>
         private Download CheckForAlias(Download download)
         {
             string actualName = _aliasData[download.Name];
@@ -98,6 +98,9 @@ namespace AutoDL
             return download;
         }
 
+        /// <summary>
+        /// Sends out initial download.  Called from <c>DownloadService.StartDownload()</c>.
+        /// </summary>
         internal void SendDownload(Download download)
         {
             if (_autoUpdate)
@@ -109,9 +112,9 @@ namespace AutoDL
         }
 
         /// <summary>
-        /// Used to request the next download while updating status of previous download.
+        /// Used to request next download based on status of current download.
         /// </summary>
-        /// <param name="success">Indicates whether the previous download completed.</param>
+        /// <param name="success">Indicates whether the current download completed.</param>
         public void RequestNextDownload(bool success)
         {
             bool retry = !success && (bool)_settingsData[SettingName.RetryFailedDownload];
@@ -152,6 +155,9 @@ namespace AutoDL
             }           
         }
 
+        /// <summary>
+        /// Opens the services for use.
+        /// </summary>
         public void Open()
         {
             //Start Services
@@ -167,6 +173,10 @@ namespace AutoDL
                 _publishClient.Open();
             }
         }
+
+        /// <summary>
+        /// Disposes the services.
+        /// </summary>
         public void Close()
         {
             this.Dispose();

@@ -101,6 +101,9 @@ public:
 	static SettingsClient^ SettingsClient;
 };
 
+/// <summary>
+/// Loads DLL dependencies into LoadFrom context.
+/// </summary>
 Assembly^ LoadFromFolder(Object^ sender, ResolveEventArgs^ args)
 {
 	Assembly^ currentAssembly, ^targetAssembly;
@@ -142,6 +145,9 @@ Assembly^ LoadFromFolder(Object^ sender, ResolveEventArgs^ args)
 	return targetAssembly;
 }
 
+/// <summary>
+/// Setups up and opens service clients for use.
+/// </summary>
 void SetupAndOpenClients()
 {
 	//Setup service clients
@@ -163,7 +169,7 @@ void SetupAndOpenClients()
 /// DLL entry-point.
 /// </summary>
 /// <remarks>
-/// Called by mIRC automatically when DLL is loaded.
+/// Called by mIRC automatically when DLL is first called.
 /// </remarks>
 void __stdcall LoadDll(LOADINFO* info)
 {
@@ -209,7 +215,6 @@ int __stdcall UnloadDll(int timeout)
 /// <summary>
 /// Sets return data to an error message.
 /// </summary>
-/// <param name="udata">mIRCFunc return data variable.</param>
 void SendErrorMessage(String^ text, char*& udata)
 {
 	String^ message = gcnew String("#Error,") + text;
@@ -219,7 +224,6 @@ void SendErrorMessage(String^ text, char*& udata)
 /// <summary>
 /// Sets return data to a success message.
 /// </summary>
-/// <param name="udata">mIRCFunc return data variable.</param>
 void SendOKMessage(char*& udata)
 {
 	udata[0] = '#';

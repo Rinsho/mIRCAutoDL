@@ -59,6 +59,9 @@ namespace AutoDL.FileConfiguration
             }
         }
 
+        /// <summary>
+        /// Ensures an Alias section exists.  Creates one if not.
+        /// </summary>
         protected void CheckForValidAliasSection(Configuration config)
         {
             if (config.Sections[AliasSection.SECTION_NAME] == null)
@@ -67,6 +70,10 @@ namespace AutoDL.FileConfiguration
                 SaveFile(config, AliasSection.SECTION_NAME);
             }
         }
+
+        /// <summary>
+        /// Ensures a Download section exists.  Creates one if not.
+        /// </summary>
         protected void CheckForValidDownloadSection(Configuration config)
         {
             if (config.Sections[DLQueueSection.SECTION_NAME] == null)
@@ -76,6 +83,7 @@ namespace AutoDL.FileConfiguration
             }
         }
 
+        //Interface abstraction
         public abstract void Visit(IHandleDownloadData data);
         public abstract void Visit(IHandleAliasData data);
         public abstract void Visit(IHandleSettingsData data);

@@ -13,13 +13,16 @@ using AutoDL.ServiceContracts;
 namespace AutoDL.Data
 {
     /// <summary>
-    /// Interface for use with data-persisting (save/load/etc) visitor
+    /// Interface for class which uses a data-persisting visitor
     /// </summary>
     internal interface IPersistData
     {
         void Accept(IVisitAndPersistData stateHandler);
     }
 
+    /// <summary>
+    /// Interface for class that handles settings data.
+    /// </summary>
     internal interface IHandleSettingsData : IPersistData
     {
         object this[SettingName name] { get; }
@@ -29,6 +32,9 @@ namespace AutoDL.Data
         IList<Setting> GetAllData();
     }
 
+    /// <summary>
+    /// Interface for class that handles alias data.
+    /// </summary>
     internal interface IHandleAliasData : IPersistData
     {
         string this[string alias] { get; }
@@ -38,6 +44,9 @@ namespace AutoDL.Data
         IList<Alias> GetAllData();
     }
 
+    /// <summary>
+    /// Interface for class that handles download data.
+    /// </summary>
     internal interface IHandleDownloadData : IPersistData
     {
         void Add(List<Download> downloads);
@@ -49,11 +58,8 @@ namespace AutoDL.Data
     }
 
     /// <summary>
-    /// Handles data and actions related to download settings.
+    /// Handles data and actions related to settings.
     /// </summary>
-    /// <remarks>
-    /// Returned Setting objects are shallow copied.
-    /// </remarks>
     internal class SettingsData : IHandleSettingsData
     {
         /// <summary>
@@ -130,9 +136,6 @@ namespace AutoDL.Data
     /// <summary>
     /// Handles data and actions related to aliases.
     /// </summary>
-    /// <remarks>
-    /// Returned Alias object are shallow copied.
-    /// </remarks>
     internal class AliasData : IHandleAliasData
     {
         /// <summary>
@@ -206,9 +209,6 @@ namespace AutoDL.Data
     /// <summary>
     /// Handles data and actions related to the queue/downloads.
     /// </summary>
-    /// <remarks>
-    /// Returned Download objects are shallow copied.
-    /// </remarks>
     internal class DownloadData : IHandleDownloadData
     {
         /// <summary>

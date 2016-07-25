@@ -25,7 +25,7 @@ namespace AutoDL.FileConfiguration
 
     /// <summary>
     /// Represents the collection within the <c>AliasSection</c> of
-    /// aliases and names.
+    /// <c>AliasElement</c>s.
     /// </summary>
     [ConfigurationCollection(typeof(AliasElement))]
     internal class AliasCollection : ConfigurationElementCollection

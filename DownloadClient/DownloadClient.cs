@@ -1,4 +1,4 @@
-﻿//WCF Service client for the AutoDL service.
+﻿//Client for managing the download queue.
 
 using System;
 using System.Collections.Generic;
@@ -23,7 +23,7 @@ namespace AutoDL.ServiceClients
         /// <param name="serviceFunction">Service function to call.</param>
         /// <param name="factory">ChannelFactory object for the service contract being used.</param>
         /// <example>
-        /// ServiceCall( (channel) => { channel.ServiceFunction(); }, factory );
+        /// ServiceCall{IDownload}( (channel) => { channel.ServiceFunction(); }, factory );
         /// </example>
         protected virtual void ServiceCall<TServiceType>(
             Action<TServiceType> serviceFunction,
@@ -93,7 +93,6 @@ namespace AutoDL.ServiceClients
         /// <summary>
         /// Constructor.
         /// </summary>
-        /// <param name="context">Context for the duplex binding (context that implements the callback contract).</param>
         /// <param name="serviceExtension">Service endpoint extension.</param>
         public DownloadClient(string serviceExtension)
         {
@@ -136,7 +135,7 @@ namespace AutoDL.ServiceClients
         //Class Methods
 
         /// <summary>
-        /// Explicitly opens the <c>DownloadFactory</c> for use.
+        /// Opens client for use.
         /// </summary>
         public override void Open()
         {
@@ -144,7 +143,7 @@ namespace AutoDL.ServiceClients
         }
 
         /// <summary>
-        /// Closes the <c>DownloadFactory</c>.
+        /// Closes the client.
         /// </summary>
         public override void Close()
         {
@@ -216,7 +215,7 @@ namespace AutoDL.ServiceClients
         //Class Methods
 
         /// <summary>
-        /// Explicitly opens the <c>AliasFactory</c> for use.
+        /// Opens client for use.
         /// </summary>
         public override void Open()
         {
@@ -224,7 +223,7 @@ namespace AutoDL.ServiceClients
         }
 
         /// <summary>
-        /// Closes the <c>AliasFactory</c>.
+        /// Closes the client.
         /// </summary>
         public override void Close()
         {
@@ -292,7 +291,7 @@ namespace AutoDL.ServiceClients
         //Class Methods
 
         /// <summary>
-        /// Explicitly opens the <c>SettingsFactory</c> for use.
+        /// Opens the client for use.
         /// </summary>
         public override void Open()
         {
@@ -300,7 +299,7 @@ namespace AutoDL.ServiceClients
         }
 
         /// <summary>
-        /// Closes the <c>SettingsFactory</c>.
+        /// Closes the client.
         /// </summary>
         public override void Close()
         {

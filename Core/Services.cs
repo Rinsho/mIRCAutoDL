@@ -1,4 +1,4 @@
-﻿//The WCF Service class.
+﻿//The WCF Service classes.
 
 using System;
 using System.Collections.Generic;
@@ -12,6 +12,9 @@ using AutoDL.Data;
 
 namespace AutoDL.Services
 {
+    /// <summary>
+    /// Dependency object for <see cref="DownloadService"/>.
+    /// </summary>
     internal class DownloadDependencies
     {       
         public IHandleDownloadData DownloadDependency { get; set; }
@@ -19,12 +22,18 @@ namespace AutoDL.Services
         public Action<Download> Callback { get; set; }
     }
 
+    /// <summary>
+    /// Dependency object for <see cref="AliasService"/>.
+    /// </summary>
     internal class AliasDependencies
     {
         public IHandleAliasData AliasDependency { get; set; }
         public string FilePath { get; set; }
     }
 
+    /// <summary>
+    /// Dependency object for <see cref="SettingsService"/>.
+    /// </summary>
     internal class SettingsDependencies
     {
         public IHandleSettingsData SettingsDependency { get; set; }
@@ -32,15 +41,14 @@ namespace AutoDL.Services
     }
 
     /// <summary>
-    /// Implements the <c>ServiceContracts</c> interfaces.
+    /// Service for settings-related actions.
     /// </summary>
     [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Single, InstanceContextMode = InstanceContextMode.PerCall)]
     internal class SettingsService : ISettings
     {
         /// <summary>
-        /// Constructor function for Settings-related variables.
+        /// Constructor
         /// </summary>
-        /// <param name="filePath">Path to the configuration file.</param>
         public SettingsService(SettingsDependencies dependency)
         {
             _settings = dependency.SettingsDependency;
@@ -105,11 +113,14 @@ namespace AutoDL.Services
         private string _filePath;
     }
 
+    /// <summary>
+    /// Service for alias-related actions.
+    /// </summary>
     [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Single, InstanceContextMode = InstanceContextMode.PerCall)]
     internal class AliasService : IAlias
     {
         /// <summary>
-        /// Constructor function for Alias-related variables.
+        /// Constructor
         /// </summary>
         public AliasService(AliasDependencies dependency)
         {
@@ -191,14 +202,15 @@ namespace AutoDL.Services
         private string _filePath;
     }
 
+    /// <summary>
+    /// Service for download-related actions.
+    /// </summary>
     [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Single, InstanceContextMode = InstanceContextMode.PerCall)]
     internal class DownloadService : IDownload
     {
         /// <summary>
-        /// Constructor for the ServiceManager class.
+        /// Constructor
         /// </summary>
-        /// <param name="filePath">Path to the configuration file.</param>
-        /// <param name="wrapperCallback">Callback to send download information to the IRC client wrapper.</param>
         public DownloadService(DownloadDependencies dependency)
         {
             _downloads = dependency.DownloadDependency;
@@ -207,9 +219,6 @@ namespace AutoDL.Services
         }
 
         //Service Methods
-        /// <summary>
-        /// Adds bot and packet(s) to the queue.  If not currently downloading, calls <c>StartDownload()</c>.
-        /// </summary>
         void IDownload.Add(Download[] downloads)
         {
             List<Download> downloadList = new List<Download>(downloads);
@@ -281,7 +290,7 @@ namespace AutoDL.Services
         }
         
         /// <summary>
-        /// Calls the wrapper callback to start downloading and the client callback to update the GUI.
+        /// Starts the download queue.
         /// </summary>
         void IDownload.StartDownload()
         {
@@ -302,6 +311,9 @@ namespace AutoDL.Services
         private string _filePath;
     }
 
+    /// <summary>
+    /// Service for download queue status updates.
+    /// </summary>
     [ServiceBehavior(ConcurrencyMode = ConcurrencyMode.Single, InstanceContextMode = InstanceContextMode.PerSession)]
     internal class UpdateManager : IReceiveUpdates, IUpdateStatus
     {
@@ -357,6 +369,9 @@ namespace AutoDL.Services
         IReceiveUpdatesCallback _clientCallback;
     }
 
+    /// <summary>
+    /// <c>EventArgs</c> for the <c>StatusUpdateEvent</c> in <see cref="UpdateManager"/>.
+    /// </summary>
     internal class StatusEventArgs : EventArgs
     {
         public StatusEventArgs(DownloadStatus status)
@@ -367,6 +382,9 @@ namespace AutoDL.Services
         public DownloadStatus Status { get; private set; }
     }
 
+    /// <summary>
+    /// <c>EventArgs</c> for the <c>NextDownloadEvent</c> in <see cref="UpdateManager"/>.
+    /// </summary>
     internal class DownloadEventArgs : EventArgs
     {
         public DownloadEventArgs(Download download)

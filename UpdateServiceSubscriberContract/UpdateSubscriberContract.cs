@@ -18,15 +18,15 @@ namespace AutoDL.ServiceContracts
     }
 
     /// <summary>
-    /// Defines the callback contract for updating the UI on the current download status.
+    /// Defines the callback contract for sending download updates.
     /// </summary>
     public interface IReceiveUpdatesCallback
     {
-        //Updates UI on current download
+        //Updates for current download
         [OperationContract(IsOneWay = true)]
         void StatusUpdate(DownloadStatus status);
 
-        //Updates UI on next download
+        //Updates for next download
         [OperationContract(IsOneWay = true)]
         void DownloadingNext(Download download);
     }

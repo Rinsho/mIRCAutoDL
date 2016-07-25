@@ -4,6 +4,8 @@
 SETLOCAL ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
 SET me=%~n0
 SET parent=%~dp0
+SET files=%parent%\Files
+SET images=%parent%\Images
 
 ECHO ###########################################
 ECHO ##### Welcome to the AutoDL Installer #####
@@ -42,10 +44,11 @@ ECHO Press ^<ENTER^> to continue...
 PAUSE >NUL
 CLS
 
-ECHO Folder Setup:
+ECHO Setup:
 ECHO.
-SET /P scriptfolder=Script folder location (leave blank to use default):
-SET /P mircfolder=mIRC folder location (leave blank to use default):
+SET /P scriptfolder=Script folder location (leave blank to use default): 
+SET /P mircfolder=mIRC folder location (leave blank to use default): 
+SET /P optsetup=Setup mirc.ini settings (Y/N)? 
 
 IF /I "%scriptfolder%"=="" (SET scriptfolder="%APPDATA%\mIRC")
 IF /I "%mircfolder%"=="" (SET mircfolder="%ProgramFiles(x86)%\mIRC")
@@ -80,45 +83,60 @@ ECHO Remote Script File Updated.
 ECHO.
 ECHO ###########################################
 ECHO.
+IF /I "%optsetup%"=="Y" (
+  ECHO MIRC.INI Setup Started.
+  SET /P "autoget=Choose Auto-Get type (1 - Resume, 2 - Overwrite): "
+  mIRCOptionsEditor.exe "%scriptfolder:"=%\mirc.ini" "!autoget!"
+  ECHO MIRC.INI Setup Completed.
+) ELSE (
+  ECHO MIRC.INI Setup Skipped.
+)
+ECHO.
+ECHO ###########################################
+ECHO.
 ECHO Copying Files...
 
-ROBOCOPY %parent% "%scriptfolder:"=%\scripts" AutoDL.mrc /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+ROBOCOPY "%images%" "%mircfolder:"=%\AutoDL\Images" Delete.png /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of Delete.png already exists)
+IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file Delete.png)
+
+ROBOCOPY "%files%" "%scriptfolder:"=%\scripts" AutoDL.mrc /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
 IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of AutoDL.mrc already exists)
 IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file AutoDL.mrc)
 
-ROBOCOPY %parent% "%mircfolder:"=%\AutoDL\Service" Core.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+ROBOCOPY "%files%" "%mircfolder:"=%\AutoDL\Service" Core.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
 IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of Core.dll already exists)
 IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file Core.dll)
 
-ROBOCOPY %parent% "%mircfolder:"=%\AutoDL\Service" ServiceDataContracts.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+ROBOCOPY "%files%" "%mircfolder:"=%\AutoDL\Service" ServiceDataContracts.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
 IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of ServiceDataContracts.dll already exists)
 IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file ServiceDataContracts.dll)
 
-ROBOCOPY %parent% "%mircfolder:"=%\AutoDL\Service" ServiceContracts.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+ROBOCOPY "%files%" "%mircfolder:"=%\AutoDL\Service" ServiceContracts.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
 IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of ServiceContracts.dll already exists)
 IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file ServiceContracts.dll)
 
-ROBOCOPY %parent% "%mircfolder:"=%\AutoDL\Client" ServiceClient.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+ROBOCOPY "%files%" "%mircfolder:"=%\AutoDL\Client" ServiceClient.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
 IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of ServiceClient.dll already exists)
 IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file ServiceClient.dll)
 
-ROBOCOPY %parent% "%mircfolder:"=%\AutoDL\Service" UpdateServiceProvider.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+ROBOCOPY "%files%" "%mircfolder:"=%\AutoDL\Service" UpdateServiceProvider.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
 IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of UpdateServiceProvider.dll already exists)
 IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file UpdateServiceProvider.dll)
 
-ROBOCOPY %parent% "%mircfolder:"=%\AutoDL\Client" UpdateServiceSubscriberClient.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+ROBOCOPY "%files%" "%mircfolder:"=%\AutoDL\Client" UpdateServiceSubscriberClient.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
 IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of UpdateServiceSubscriberClient.dll already exists)
 IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file UpdateServiceSubscriberClient.dll)
 
-ROBOCOPY %parent% "%mircfolder:"=%\AutoDL\Service" UpdateServiceSubscriberContract.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+ROBOCOPY "%files%" "%mircfolder:"=%\AutoDL\Service" UpdateServiceSubscriberContract.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
 IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of UpdateServiceSubscriberContract.dll already exists)
 IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file UpdateServiceSubscriberContract.dll)
 
-ROBOCOPY %parent% "%mircfolder:"=%\AutoDL\Client" mIRCClient.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+ROBOCOPY "%files%" "%mircfolder:"=%\AutoDL\Client" mIRCClient.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
 IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of mIRCClient.dll already exists)
 IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file mIRCClient.dll)
 
-ROBOCOPY %parent% "%mircfolder:"=%\AutoDL\Service" mIRCWrapper.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
+ROBOCOPY "%files%" "%mircfolder:"=%\AutoDL\Service" mIRCWrapper.dll /xo /r:5 /w:1 /ns /nc /ndl /njh /njs
 IF %ERRORLEVEL% EQU 0 (ECHO File Copy: Newer or current version of mIRCWrapper.dll already exists)
 IF %ERRORLEVEL% GTR 1 (ECHO File Copy: Error copying file mIRCWrapper.dll)
 

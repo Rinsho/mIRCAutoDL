@@ -25,7 +25,7 @@ namespace AutoDL.FileConfiguration
 
     /// <summary>
     /// Represents the collection within the <c>DLQueueSection</c> of
-    /// bots and packets.
+    /// <c>DLQueueItemElement</c>s.
     /// </summary>
     [ConfigurationCollection(typeof(DLQueueItemElement), AddItemName="queueItem")]
     internal class DLQueueCollection : ConfigurationElementCollection
@@ -88,7 +88,7 @@ namespace AutoDL.FileConfiguration
     }
 
     /// <summary>
-    /// Represents a bot and its associated packet(s).
+    /// Represents a bot and its associated packet.
     /// </summary>
     internal class DLQueueItemElement : ConfigurationElement
     {
@@ -106,17 +106,17 @@ namespace AutoDL.FileConfiguration
             }
         }
 
-        [ConfigurationProperty("packetList", IsRequired=true)]
+        [ConfigurationProperty("packet", IsRequired=true)]
         public int Packet
         {
             get
             {
-                return (int)this["packetList"];
+                return (int)this["packet"];
             }
 
             set
             {
-                this["packetList"] = value;
+                this["packet"] = value;
             }
         }
     }

@@ -7,7 +7,7 @@ using AutoDL.ServiceContracts;
 namespace AutoDL.ServiceClients
 {
     /// <summary>
-    /// Base class for Publisher clients.
+    /// Base class for Subscriber clients.
     /// </summary>
     public abstract class SubscriberClientBase
     {
@@ -46,8 +46,16 @@ namespace AutoDL.ServiceClients
         protected NetNamedPipeBinding _binding = new NetNamedPipeBinding();
     }
 
+    /// <summary>
+    /// Client used to subscribe to download updates.
+    /// </summary>
     public class UpdateSubscriberClient : SubscriberClientBase, IReceiveUpdates
     {
+        /// <summary>
+        /// Constructor
+        /// </summary>
+        /// <param name="context">Context containing class that implements callback contract.</param>
+        /// <param name="serviceExtension">Service extension to configure endpoint.</param>
         public UpdateSubscriberClient(InstanceContext context, string serviceExtension)
         {
             _channelFactory = new DuplexChannelFactory<IReceiveUpdates>(
@@ -68,14 +76,25 @@ namespace AutoDL.ServiceClients
             (_channel as IClientChannel).Close();
         }
 
+        /// <summary>
+        /// Opens client for use.
+        /// </summary>
         public override void Open()
         {
             _channelFactory.Open();
         }
+
+        /// <summary>
+        /// Closes client.
+        /// </summary>
         public override void Close()
         {
             _channelFactory.Close();
         }
+
+        /// <summary>
+        /// Attempts to reconnect when a channel faults.
+        /// </summary>
         private void ChannelFault()
         {
             (_channel as IClientChannel).Abort();
