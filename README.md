@@ -1,3 +1,5 @@
+**Update:** If you're here for the code, check out the `beta-build` branch!  It's re-structured to be easier to deploy.
+
 Welcome to the mIRC AutoDL program wiki!  This program is confirmed working with mIRC v7.32 and I've seen no documented scripting engine changes to indicate it will not work with up to mIRC v7.43.  Enjoy!
 
 **Requirements:** mIRC v7.32 or later, .NET Framework 4.5
