@@ -1,4 +1,4 @@
-**Update:** If you're here for the code, check out the `beta-build` branch!  It's re-structured to be easier to deploy.
+**Update:** If you're here for the code, check out the `beta-build` branch!  It's re-structured to be easier to deploy.  Also, the `beta-build` branch has the `*.sln` and other files for easy loading in Visual Studio.
 
 Welcome to the mIRC AutoDL program wiki!  This program is confirmed working with mIRC v7.32 and I've seen no documented scripting engine changes to indicate it will not work with up to mIRC v7.43.  Enjoy!
 
