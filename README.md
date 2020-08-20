@@ -67,17 +67,6 @@ This will allow you to AFK and let my program handle the trusted users list as i
 will not work.  In the event this happens, you can manually remove the user by going to `Options`>`DCC`>`Trusted` button.
 
 
-###**Future Development**
-- External GUI (WPF) with a LOT more functionality and customization
-- GUI installer (Wix#) for easier installation
-- Handling re-direct bots (bots that re-direct download requests to other bots)
-- Ability to run multiple queues in parallel
-- Allowing queue optimization via a shallow-learning algorithm (max 3 layers)
-- Whatever else I think up that would be useful
-
-Note: Only the WPF GUI and Wix# installer are planned for Beta.  More may be added depending on schedule.
-
-
 ###**Updates**
 8/2: Fixed an issue where if a fresh install of mIRC did not generate a default `remote.ini` file the auto-load event for `AutoDL.mrc` would not be installed.  If mIRC does not automatically load the new `remote.ini`, simply go to `Tools > Script Editor > File > Load` and choose `remote.ini`.
 
